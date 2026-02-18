@@ -193,15 +193,7 @@ function insertDefaultData() {
   const doctorCount = db.exec('SELECT COUNT(*) as count FROM doctors');
   
   if (!doctorCount[0] || doctorCount[0].values[0][0] === 0) {
-    console.log('Inserting default doctors...');
-    
-    db.run(`INSERT INTO doctors (doctor_id, name, specialization, license_number, contact_number, email, consultation_fee, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['DOC001', 'Dr. Juan dela Cruz', 'General Practitioner', 'LIC123456', '09171234567', 'juan@clinic.com', 500, 'Active']);
-    db.run(`INSERT INTO doctors (doctor_id, name, specialization, license_number, contact_number, email, consultation_fee, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      ['DOC002', 'Dr. Maria Santos', 'Pediatrician', 'LIC789012', '09187654321', 'maria@clinic.com', 600, 'Active']);
-    
-    console.log('Default doctors created');
-    saveDatabase();
+    console.log('No default doctors - add doctors manually through the UI');
   }
 
   // Check if items exist
