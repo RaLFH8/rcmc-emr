@@ -1,0 +1,134 @@
+<div class="reports-container">
+  <h1 style="margin-bottom: 30px;">Income & Reports</h1>
+
+  <!-- Date Range Filter -->
+  <div class="card">
+    <div class="card-header">Generate Income Report</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Start Date</label>
+        <input type="date" id="reportStartDate">
+      </div>
+      <div class="form-group">
+        <label>End Date</label>
+        <input type="date" id="reportEndDate">
+      </div>
+      <div class="form-group" style="display: flex; align-items: flex-end;">
+        <button onclick="generateIncomeReport()" class="btn btn-primary">Generate Report</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Report Summary -->
+  <div id="reportSummary" style="display: none;">
+    <h2 style="margin: 30px 0 20px 0;">Report Summary</h2>
+    <div class="metrics-grid">
+      <div class="metric-card success">
+        <div class="metric-label">Total Revenue</div>
+        <div class="metric-value" id="reportTotalRevenue">₱0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Number of Invoices</div>
+        <div class="metric-value" id="reportInvoiceCount">0</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Average Transaction</div>
+        <div class="metric-value" id="reportAvgTransaction">₱0</div>
+      </div>
+    </div>
+
+    <!-- Revenue by Doctor -->
+    <div class="card">
+      <div class="card-header">Revenue by Doctor</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Doctor ID</th>
+              <th>Revenue</th>
+              <th>Percentage</th>
+            </tr>
+          </thead>
+          <tbody id="doctorRevenueBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Daily Revenue Breakdown -->
+    <div class="card">
+      <div class="card-header">Daily Revenue Breakdown</div>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Revenue</th>
+            </tr>
+          </thead>
+          <tbody id="dailyRevenueBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function generateIncomeReport() {
+  var startDate = document.getElementById('reportStartDate').value;
+  var endDate = document.getElementById('reportEndDate').value;
+  
+  if (!startDate || !endDate) {
+    alert('Please select both start and end dates');
+    return;
+  }
+  
+  google.script.run
+    .withSuccessHandler(function(report) {
+      // Summary metrics
+      var invoiceCount = Object.keys(report.dailyRevenue).length;
+      var avgTransaction = invoiceCount > 0 ? report.totalRevenue / invoiceCount : 0;
+      
+      document.getElementById('reportTotalRevenue').textContent = '₱' + report.totalRevenue.toFixed(2);
+      document.getElementById('reportInvoiceCount').textContent = invoiceCount;
+      document.getElementById('reportAvgTransaction').textContent = '₱' + avgTransaction.toFixed(2);
+      
+      // Doctor revenue
+      var doctorTbody = document.getElementById('doctorRevenueBody');
+      var doctorHtml = '';
+      for (var doctorId in report.doctorRevenue) {
+        var revenue = report.doctorRevenue[doctorId];
+        var percentage = (revenue / report.totalRevenue * 100).toFixed(1);
+        doctorHtml += '<tr>';
+        doctorHtml += '<td>' + doctorId + '</td>';
+        doctorHtml += '<td>₱' + revenue.toFixed(2) + '</td>';
+        doctorHtml += '<td>' + percentage + '%</td>';
+        doctorHtml += '</tr>';
+      }
+      doctorTbody.innerHTML = doctorHtml || '<tr><td colspan="3" style="text-align: center;">No data</td></tr>';
+      
+      // Daily revenue
+      var dailyTbody = document.getElementById('dailyRevenueBody');
+      var dailyHtml = '';
+      var sortedDates = Object.keys(report.dailyRevenue).sort();
+      sortedDates.forEach(function(date) {
+        dailyHtml += '<tr>';
+        dailyHtml += '<td>' + date + '</td>';
+        dailyHtml += '<td>₱' + report.dailyRevenue[date].toFixed(2) + '</td>';
+        dailyHtml += '</tr>';
+      });
+      dailyTbody.innerHTML = dailyHtml || '<tr><td colspan="2" style="text-align: center;">No data</td></tr>';
+      
+      document.getElementById('reportSummary').style.display = 'block';
+    })
+    .getIncomeReport(startDate, endDate);
+}
+
+// Set default dates (current month)
+document.addEventListener('DOMContentLoaded', function() {
+  var today = new Date();
+  var firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
+  document.getElementById('reportEndDate').value = today.toISOString().split('T')[0];
+});
+</script>

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: rizalcare-emr
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production

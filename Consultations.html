@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consultations - Rizalcare EMR</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+    .modal.active { display: block; }
+    .modal-content { background: white; border-radius: 10px; padding: 20px; max-width: 1000px; width: 95%; margin: 20px auto; }
+    .modal-close { float: right; font-size: 28px; cursor: pointer; color: #999; line-height: 1; }
+    .modal-close:hover { color: #333; }
+    .modal h2 { margin-bottom: 15px; font-size: 20px; clear: both; }
+    .soap-section { background: #f9f9f9; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid var(--primary-color); }
+    .soap-section h3 { margin: 0 0 10px 0; font-size: 16px; color: var(--primary-color); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { font-size: 13px; margin-bottom: 3px; display: block; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea { padding: 8px; font-size: 13px; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .vital-signs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    @media (max-width: 768px) { .form-row, .vital-signs { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="clinic-name">🏥 Rizalcare Medical Clinic</div>
+      </div>
+      <div class="nav-right">
+        <span id="userDisplay"></span>
+        <button onclick="handleLogout()" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main-layout">
+      <aside class="sidebar">
+        <ul class="menu">
+          <li class="menu-item"><a href="/dashboard.html">📊 Dashboard</a></li>
+          <li class="menu-item"><a href="/patients.html">👥 Patients</a></li>
+          <li class="menu-item"><a href="/appointments.html">📅 Appointments</a></li>
+          <li class="menu-item active"><a href="/consultations.html">🩺 Consultations</a></li>
+          <li class="menu-item"><a href="/doctors.html">👨‍⚕️ Doctors</a></li>
+          <li class="menu-item"><a href="/items.html">💊 Items & Pricing</a></li>
+        </ul>
+      </aside>
+
+      <main class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1>Consultation Management</h1>
+          <button onclick="openConsultationModal()" class="btn btn-primary">+ New Consultation</button>
+        </div>
+
+        <div class="card">
+          <h3>Recent Consultations</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Consultation ID</th>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Chief Complaint</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="consultationListBody">
+              <tr><td colspan="6" style="text-align: center; color: #999;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Consultation Modal -->
+  <div id="consultationModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeConsultationModal()">&times;</span>
+      <h2>New Consultation - SOAP Note</h2>
+      <form id="consultationForm" onsubmit="handleConsultationSubmit(event)">
+        
+        <!-- Patient Selection -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>Patient *</label>
+            <select name="patientId" id="patientSelect" required onchange="loadPatientHistory()">
+              <option value="">Select Patient</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Doctor *</label>
+            <select name="doctorId" required>
+              <option value="">Select Doctor</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Patient History Summary -->
+        <div id="patientHistorySummary" style="display:none; background:#e3f2fd; padding:10px; margin:10px 0; border-radius:5px;">
+          <strong>Patient History:</strong>
+          <div id="historyContent"></div>
+        </div>
+
+        <!-- SOAP Notes -->
+        <div class="soap-section">
+          <h3>S - Subjective (Chief Complaint)</h3>
+          <div class="form-group">
+            <label>What brings the patient in today? *</label>
+            <textarea name="chiefComplaint" rows="3" required placeholder="Patient's description of symptoms, concerns, history of present illness..."></textarea>
+          </div>
+        </div>
+
+        <div class="soap-section">
+          <h3>O - Objective (Vital Signs & Physical Exam)</h3>
+          <div class="vital-signs">
+            <div class="form-group">
+              <label>BP (mmHg)</label>
+              <input type="text" id="bp" placeholder="120/80">
+            </div>
+            <div class="form-group">
+              <label>Temp (°C)</label>
+              <input type="text" id="temp" placeholder="36.5">
+            </div>
+            <div class="form-group">
+              <label>HR (bpm)</label>
+              <input type="text" id="hr" placeholder="72">
+            </div>
+            <div class="form-group">
+              <label>RR (bpm)</label>
+              <input type="text" id="rr" placeholder="16">
+            </div>
+            <div class="form-group">
+              <label>Weight (kg)</label>
+              <input type="text" id="weight" placeholder="65">
+            </div>
+            <div class="form-group">
+              <label>Height (cm)</label>
+              <input type="text" id="height" placeholder="165">
+            </div>
+            <div class="form-group">
+              <label>O2 Sat (%)</label>
+              <input type="text" id="o2sat" placeholder="98">
+            </div>
+            <div class="form-group">
+              <label>BMI</label>
+              <input type="text" id="bmi" readonly placeholder="Auto">
+            </div>
+          </div>
+          <input type="hidden" name="vitalSigns" id="vitalSignsHidden">
+        </div>
+
+        <div class="soap-section">
+          <h3>A - Assessment (Diagnosis)</h3>
+          <div class="form-group">
+            <label>Diagnosis / Impression *</label>
+            <textarea name="diagnosis" rows="3" required placeholder="Clinical diagnosis, differential diagnosis, ICD codes..."></textarea>
+          </div>
+        </div>
+
+        <div class="soap-section">
+          <h3>P - Plan (Treatment & Prescription)</h3>
+          <div class="form-group">
+            <label>Treatment Plan *</label>
+            <textarea name="treatmentPlan" rows="3" required placeholder="Medications, procedures, lifestyle modifications, patient education..."></textarea>
+          </div>
+          <div class="form-group">
+            <label>Prescription (Rx)</label>
+            <textarea name="prescription" rows="4" placeholder="Medication name, dosage, frequency, duration&#10;Example: Amoxicillin 500mg, 1 cap TID x 7 days"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Follow-up Date</label>
+              <input type="date" name="followUpDate">
+            </div>
+            <div class="form-group">
+              <label>Additional Notes</label>
+              <input type="text" name="notes" placeholder="Lab orders, referrals, etc.">
+            </div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-primary">Save Consultation</button>
+          <button type="button" onclick="closeConsultationModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+      </form>
+      <div id="consultationFormMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    fetch('/api/session').then(r => r.json()).then(user => {
+      if (!user) { window.location.href = '/'; return; }
+      currentUser = user;
+      document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
+      loadConsultations();
+      loadPatients();
+      loadDoctors();
+    });
+
+    function handleLogout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    // Auto-calculate BMI
+    document.getElementById('weight').addEventListener('input', calculateBMI);
+    document.getElementById('height').addEventListener('input', calculateBMI);
+
+    function calculateBMI() {
+      const weight = parseFloat(document.getElementById('weight').value);
+      const height = parseFloat(document.getElementById('height').value) / 100;
+      if (weight && height) {
+        const bmi = (weight / (height * height)).toFixed(1);
+        document.getElementById('bmi').value = bmi;
+      }
+    }
+
+    function openConsultationModal() {
+      document.getElementById('consultationModal').classList.add('active');
+      document.getElementById('consultationForm').reset();
+      document.getElementById('consultationFormMessage').innerHTML = '';
+      document.getElementById('patientHistorySummary').style.display = 'none';
+    }
+
+    function closeConsultationModal() {
+      document.getElementById('consultationModal').classList.remove('active');
+    }
+
+    function loadPatients() {
+      fetch('/api/patients/all')
+        .then(r => r.json())
+        .then(patients => {
+          const select = document.getElementById('patientSelect');
+          patients.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.patientId;
+            option.textContent = p.patientId + ' - ' + p.firstName + ' ' + p.lastName;
+            select.appendChild(option);
+          });
+        });
+    }
+
+    function loadDoctors() {
+      fetch('/api/doctors/all')
+        .then(r => r.json())
+        .then(doctors => {
+          const select = document.querySelector('[name="doctorId"]');
+          doctors.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.doctorId;
+            option.textContent = d.name + ' - ' + d.specialization;
+            if (currentUser && currentUser.role === 'Doctor') {
+              // Auto-select if current user is a doctor
+              option.selected = d.name === currentUser.name;
+            }
+            select.appendChild(option);
+          });
+        });
+    }
+
+    function loadPatientHistory() {
+      const patientId = document.getElementById('patientSelect').value;
+      if (!patientId) {
+        document.getElementById('patientHistorySummary').style.display = 'none';
+        return;
+      }
+
+      Promise.all([
+        fetch('/api/patients/' + patientId).then(r => r.json()),
+        fetch('/api/consultations/patient/' + patientId).then(r => r.json())
+      ]).then(([patient, consultations]) => {
+        let html = '<div style="font-size:12px; margin-top:5px;">';
+        html += '<strong>Allergies:</strong> ' + (patient.allergies || 'None') + ' | ';
+        html += '<strong>Medical History:</strong> ' + (patient.medicalHistory || 'None') + '<br>';
+        html += '<strong>Previous Consultations:</strong> ' + consultations.length;
+        if (consultations.length > 0) {
+          html += ' (Last: ' + new Date(consultations[0].consultationDate).toLocaleDateString() + ')';
+        }
+        html += '</div>';
+        document.getElementById('historyContent').innerHTML = html;
+        document.getElementById('patientHistorySummary').style.display = 'block';
+      });
+    }
+
+    function handleConsultationSubmit(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const consultationData = {};
+      formData.forEach((value, key) => { consultationData[key] = value; });
+      
+      // Compile vital signs
+      const vitals = {
+        bp: document.getElementById('bp').value,
+        temp: document.getElementById('temp').value,
+        hr: document.getElementById('hr').value,
+        rr: document.getElementById('rr').value,
+        weight: document.getElementById('weight').value,
+        height: document.getElementById('height').value,
+        o2sat: document.getElementById('o2sat').value,
+        bmi: document.getElementById('bmi').value
+      };
+      consultationData.vitalSigns = JSON.stringify(vitals);
+      
+      document.getElementById('consultationFormMessage').innerHTML = '<div class="success-message">Saving...</div>';
+      
+      fetch('/api/consultations/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(consultationData)
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          document.getElementById('consultationFormMessage').innerHTML = 
+            '<div class="success-message">✓ Consultation saved! ID: ' + result.consultationId + '</div>';
+          setTimeout(() => { closeConsultationModal(); loadConsultations(); }, 1500);
+        } else {
+          document.getElementById('consultationFormMessage').innerHTML = 
+            '<div class="error-message">Error: ' + result.message + '</div>';
+        }
+      });
+    }
+
+    function loadConsultations() {
+      fetch('/api/consultations/recent?limit=20')
+        .then(r => r.json())
+        .then(consultations => {
+          const tbody = document.getElementById('consultationListBody');
+          if (!consultations || consultations.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No consultations yet</td></tr>';
+            return;
+          }
+          
+          let html = '';
+          consultations.forEach(c => {
+            const date = new Date(c.consultationDate).toLocaleString();
+            html += '<tr>';
+            html += '<td>' + c.consultationId + '</td>';
+            html += '<td>' + date + '</td>';
+            html += '<td>' + c.patientName + '</td>';
+            html += '<td>' + c.doctorName + '</td>';
+            html += '<td>' + (c.chiefComplaint || '').substring(0, 50) + '...</td>';
+            html += '<td><button onclick="viewConsultation(\'' + c.consultationId + '\')" class="btn btn-sm btn-primary">View</button></td>';
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+        });
+    }
+
+    function viewConsultation(consultationId) {
+      alert('View consultation details: ' + consultationId + '\n\n(Details view coming in next update)');
+    }
+  </script>
+</body>
+</html>

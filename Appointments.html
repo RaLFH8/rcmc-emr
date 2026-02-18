@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Appointments - Rizalcare EMR</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+    .modal.active { display: block; }
+    .modal-content { background: white; border-radius: 10px; padding: 20px; max-width: 800px; width: 95%; margin: 20px auto; }
+    .modal-close { float: right; font-size: 28px; cursor: pointer; color: #999; line-height: 1; }
+    .modal-close:hover { color: #333; }
+    .modal h2 { margin-bottom: 15px; font-size: 20px; clear: both; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { font-size: 13px; margin-bottom: 5px; display: block; font-weight: 500; }
+    .form-group input, .form-group select, .form-group textarea { padding: 10px; font-size: 14px; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .patient-result { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .patient-result:hover { background: #f5f5f5; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
+    .badge-scheduled { background: #E3F2FD; color: #1976D2; }
+    .badge-completed { background: #E8F5E9; color: #388E3C; }
+    .badge-cancelled { background: #FFEBEE; color: #D32F2F; }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="clinic-name">🏥 Rizalcare Medical Clinic</div>
+      </div>
+      <div class="nav-right">
+        <span id="userDisplay"></span>
+        <button onclick="handleLogout()" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main-layout">
+      <aside class="sidebar">
+        <ul class="menu">
+          <li class="menu-item"><a href="/dashboard.html">📊 Dashboard</a></li>
+          <li class="menu-item"><a href="/patients.html">👥 Patients</a></li>
+          <li class="menu-item active"><a href="/appointments.html">📅 Appointments</a></li>
+          <li class="menu-item"><a href="/consultations.html">🩺 Consultations</a></li>
+          <li class="menu-item"><a href="/doctors.html">👨‍⚕️ Doctors</a></li>
+          <li class="menu-item"><a href="/items.html">💊 Items & Pricing</a></li>
+        </ul>
+      </aside>
+
+      <main class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1>Appointment Scheduling</h1>
+          <button onclick="openAppointmentModal()" class="btn btn-primary">+ New Appointment</button>
+        </div>
+
+        <div class="card" style="margin-bottom: 20px;">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Select Date</label>
+              <input type="date" id="appointmentDate" onchange="loadAppointments()">
+            </div>
+            <div class="form-group">
+              <button onclick="loadAppointments()" class="btn btn-primary">View Schedule</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Appointments Schedule</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Purpose</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="appointmentsListBody">
+              <tr><td colspan="6" style="text-align: center; color: #999;">Select a date to view appointments</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Appointment Modal -->
+  <div id="appointmentModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeAppointmentModal()">&times;</span>
+      <h2>Schedule New Appointment</h2>
+      <form id="appointmentForm" onsubmit="handleAppointmentSubmit(event)">
+        <div class="form-group">
+          <label>Search Patient *</label>
+          <input type="text" id="patientSearch" placeholder="Search by ID, name, or contact" oninput="searchPatients()">
+          <div id="patientResults" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; display: none;"></div>
+          <input type="hidden" name="patientId" id="selectedPatientId" required>
+          <div id="selectedPatientInfo" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 4px; display: none;"></div>
+        </div>
+        
+        <div class="form-group">
+          <label>Select Doctor *</label>
+          <select name="doctorId" required>
+            <option value="">Choose a doctor</option>
+          </select>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label>Appointment Date *</label>
+            <input type="date" name="appointmentDate" required>
+          </select>
+          </div>
+          <div class="form-group">
+            <label>Appointment Time *</label>
+            <input type="time" name="appointmentTime" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label>Purpose of Visit *</label>
+          <textarea name="purpose" rows="3" required placeholder="e.g., General checkup, Follow-up consultation"></textarea>
+        </div>
+        
+        <div class="form-group">
+          <label>Additional Notes</label>
+          <textarea name="notes" rows="2" placeholder="Any special instructions"></textarea>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-primary">Schedule Appointment</button>
+          <button type="button" onclick="closeAppointmentModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+      </form>
+      <div id="appointmentFormMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+
+    fetch('/api/session').then(r => r.json()).then(user => {
+      if (!user) { window.location.href = '/'; return; }
+      currentUser = user;
+      document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
+      loadAppointments();
+      loadDoctors();
+    });
+
+    function handleLogout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    function openAppointmentModal() {
+      document.getElementById('appointmentModal').classList.add('active');
+      document.getElementById('appointmentForm').reset();
+      document.getElementById('selectedPatientInfo').style.display = 'none';
+      document.getElementById('patientResults').style.display = 'none';
+      document.getElementById('appointmentFormMessage').innerHTML = '';
+    }
+
+    function closeAppointmentModal() {
+      document.getElementById('appointmentModal').classList.remove('active');
+    }
+
+    function loadDoctors() {
+      fetch('/api/doctors/all')
+        .then(r => r.json())
+        .then(doctors => {
+          const select = document.querySelector('[name="doctorId"]');
+          doctors.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.doctorId;
+            option.textContent = d.name + ' - ' + d.specialization;
+            select.appendChild(option);
+          });
+        });
+    }
+
+    function searchPatients() {
+      const searchTerm = document.getElementById('patientSearch').value;
+      if (searchTerm.length < 2) {
+        document.getElementById('patientResults').style.display = 'none';
+        return;
+      }
+      
+      fetch('/api/patients/search/' + searchTerm)
+        .then(r => r.json())
+        .then(patients => {
+          const resultsDiv = document.getElementById('patientResults');
+          if (patients.length === 0) {
+            resultsDiv.innerHTML = '<div style="padding: 10px; color: #999;">No patients found</div>';
+            resultsDiv.style.display = 'block';
+            return;
+          }
+          
+          let html = '';
+          patients.forEach(p => {
+            html += '<div class="patient-result" onclick="selectPatient(\'' + p.patientId + '\', \'' + 
+                    p.firstName + ' ' + p.lastName + '\')">';
+            html += '<strong>' + p.patientId + '</strong> - ' + p.firstName + ' ' + p.lastName + 
+                    ' (' + p.contactNumber + ')';
+            html += '</div>';
+          });
+          resultsDiv.innerHTML = html;
+          resultsDiv.style.display = 'block';
+        });
+    }
+
+    function selectPatient(patientId, patientName) {
+      document.getElementById('selectedPatientId').value = patientId;
+      document.getElementById('patientSearch').value = patientName;
+      document.getElementById('patientResults').style.display = 'none';
+      document.getElementById('selectedPatientInfo').innerHTML = 
+        '<strong>Selected:</strong> ' + patientId + ' - ' + patientName;
+      document.getElementById('selectedPatientInfo').style.display = 'block';
+    }
+
+    function handleAppointmentSubmit(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const appointmentData = {};
+      formData.forEach((value, key) => { appointmentData[key] = value; });
+      appointmentData.createdBy = currentUser.userId;
+      
+      document.getElementById('appointmentFormMessage').innerHTML = 
+        '<div class="success-message">Scheduling...</div>';
+      
+      fetch('/api/appointments/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appointmentData)
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          document.getElementById('appointmentFormMessage').innerHTML = 
+            '<div class="success-message">✓ Appointment scheduled! ID: ' + result.appointmentId + '</div>';
+          setTimeout(() => { closeAppointmentModal(); loadAppointments(); }, 1500);
+        } else {
+          document.getElementById('appointmentFormMessage').innerHTML = 
+            '<div class="error-message">Error: ' + result.message + '</div>';
+        }
+      });
+    }
+
+    function loadAppointments() {
+      const dateInput = document.getElementById('appointmentDate');
+      const filterDate = dateInput.value || new Date().toISOString().split('T')[0];
+      dateInput.value = filterDate;
+      
+      fetch('/api/appointments/date/' + filterDate)
+        .then(r => r.json())
+        .then(appointments => {
+          const tbody = document.getElementById('appointmentsListBody');
+          if (!appointments || appointments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No appointments for this date</td></tr>';
+            return;
+          }
+          
+          let html = '';
+          appointments.forEach(apt => {
+            const badgeClass = apt.status === 'Completed' ? 'badge-completed' : 
+                              apt.status === 'Scheduled' ? 'badge-scheduled' : 'badge-cancelled';
+            html += '<tr>';
+            html += '<td>' + apt.appointmentTime + '</td>';
+            html += '<td>' + apt.patientName + '</td>';
+            html += '<td>' + apt.doctorName + '</td>';
+            html += '<td>' + apt.purpose + '</td>';
+            html += '<td><span class="badge ' + badgeClass + '">' + apt.status + '</span></td>';
+            html += '<td><button onclick="updateStatus(\'' + apt.appointmentId + '\')" class="btn btn-sm btn-primary">Update</button></td>';
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+        });
+    }
+
+    function updateStatus(appointmentId) {
+      const newStatus = prompt('Enter new status (Scheduled/Completed/Cancelled):');
+      if (!newStatus) return;
+      
+      fetch('/api/appointments/update-status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointmentId, status: newStatus })
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          alert('Status updated!');
+          loadAppointments();
+        } else {
+          alert('Error: ' + result.message);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

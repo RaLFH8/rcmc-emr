@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing - Rizalcare EMR</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
+    .modal.active { display: block; }
+    .modal-content { background: white; border-radius: 10px; padding: 20px; max-width: 1000px; width: 95%; margin: 20px auto; }
+    .modal-close { float: right; font-size: 28px; cursor: pointer; color: #999; line-height: 1; }
+    .modal-close:hover { color: #333; }
+    .modal h2 { margin-bottom: 15px; font-size: 20px; clear: both; }
+    .form-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .form-group { margin-bottom: 15px; }
+    .form-group label { font-size: 13px; margin-bottom: 5px; display: block; font-weight: 500; }
+    .form-group input, .form-group select { padding: 10px; font-size: 14px; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
+    .patient-result { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .patient-result:hover { background: #f5f5f5; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 20px; }
+    .metric-card { background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #4A90E2; }
+    .metric-card.success { border-left-color: #50C878; }
+    .metric-card.warning { border-left-color: #F39C12; }
+    .metric-label { font-size: 14px; color: #666; margin-bottom: 5px; }
+    .metric-value { font-size: 28px; font-weight: bold; color: #333; }
+    @media print {
+      body * { visibility: hidden; }
+      #invoicePreviewContent, #invoicePreviewContent * { visibility: visible; }
+      #invoicePreviewContent { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="clinic-name">🏥 Rizalcare Medical Clinic</div>
+      </div>
+      <div class="nav-right">
+        <span id="userDisplay"></span>
+        <button onclick="handleLogout()" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main-layout">
+      <aside class="sidebar">
+        <ul class="menu">
+          <li class="menu-item"><a href="/dashboard.html">📊 Dashboard</a></li>
+          <li class="menu-item"><a href="/patients.html">👥 Patients</a></li>
+          <li class="menu-item"><a href="/appointments.html">📅 Appointments</a></li>
+          <li class="menu-item"><a href="/consultations.html">🩺 Consultations</a></li>
+          <li class="menu-item"><a href="/doctors.html">👨‍⚕️ Doctors</a></li>
+          <li class="menu-item"><a href="/items.html">💊 Items & Pricing</a></li>
+          <li class="menu-item active"><a href="/billing.html">💳 Billing</a></li>
+        </ul>
+      </aside>
+
+      <main class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1>Billing & Invoicing</h1>
+          <button onclick="openBillingModal()" class="btn btn-primary">+ Create New Invoice</button>
+        </div>
+
+        <div class="metrics-grid">
+          <div class="metric-card success">
+            <div class="metric-label">Today's Revenue</div>
+            <div class="metric-value" id="todayRevenue">₱0</div>
+          </div>
+          <div class="metric-card warning">
+            <div class="metric-label">Pending Payments</div>
+            <div class="metric-value" id="pendingPayments">₱0</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Total Invoices</div>
+            <div class="metric-value" id="totalInvoices">0</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Recent Invoices</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Invoice ID</th>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Amount</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoiceListBody">
+              <tr><td colspan="8" style="text-align: center; color: #999;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Create Invoice Modal -->
+  <div id="billingModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeBillingModal()">&times;</span>
+      <h2>Create Invoice</h2>
+      <form id="billingForm" onsubmit="handleBillingSubmit(event)">
+        <div class="form-group">
+          <label>Search Patient *</label>
+          <input type="text" id="billPatientSearch" placeholder="Search by ID, name, or contact" oninput="searchPatientsForBilling()">
+          <div id="billPatientResults" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; display: none;"></div>
+          <input type="hidden" name="patientId" id="billPatientId" required>
+          <div id="billSelectedPatientInfo" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 4px; display: none;"></div>
+        </div>
+        
+        <div class="form-group">
+          <label>Attending Doctor *</label>
+          <select name="doctorId" required>
+            <option value="">Select Doctor</option>
+          </select>
+        </div>
+        
+        <h3 style="margin: 20px 0 15px 0;">Invoice Items</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Category</label>
+            <select id="itemCategory" onchange="loadItemsByCategory()">
+              <option value="">All Categories</option>
+              <option value="Consultation">Consultation</option>
+              <option value="Laboratory">Laboratory</option>
+              <option value="Procedure">Procedure</option>
+              <option value="Medicine">Medicine</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Select Item</label>
+            <select id="itemSelect">
+              <option value="">Choose an item</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Quantity</label>
+            <input type="number" id="itemQuantity" value="1" min="1">
+          </div>
+        </div>
+        <button type="button" onclick="addItemToInvoice()" class="btn btn-success" style="margin-bottom: 15px;">Add Item</button>
+        
+        <table style="width: 100%; margin: 20px 0;">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Unit Price</th>
+              <th>Quantity</th>
+              <th>Total</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceItemsBody">
+            <tr><td colspan="6" style="text-align: center; color: #999;">No items added</td></tr>
+          </tbody>
+        </table>
+        
+        <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <strong>Subtotal:</strong>
+            <span id="invoiceSubtotal">₱0.00</span>
+          </div>
+          
+          <div class="form-group">
+            <label>Discount Type</label>
+            <select id="discountType" onchange="calculateInvoiceTotal()">
+              <option value="None">No Discount</option>
+              <option value="Senior Citizen">Senior Citizen (20%)</option>
+              <option value="PWD">PWD (20%)</option>
+            </select>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; margin-bottom: 10px; color: #E74C3C;">
+            <strong>Discount:</strong>
+            <span id="invoiceDiscount">₱0.00</span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; color: #4A90E2;">
+            <strong>Grand Total:</strong>
+            <span id="invoiceGrandTotal">₱0.00</span>
+          </div>
+        </div>
+        
+        <h3 style="margin: 20px 0 15px 0;">Payment Details</h3>
+        <div class="form-row">
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Payment Mode</label>
+            <select name="paymentMode">
+              <option value="Cash">Cash</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Debit Card">Debit Card</option>
+              <option value="GCash">GCash</option>
+              <option value="PayMaya">PayMaya</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+            </select>
+          </div>
+          <div class="form-group" style="grid-column: span 2;">
+            <label>Amount Paid</label>
+            <input type="number" name="amountPaid" id="amountPaid" step="0.01" min="0" value="0">
+          </div>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-primary">Generate Invoice</button>
+          <button type="button" onclick="closeBillingModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+      </form>
+      <div id="billingFormMessage"></div>
+    </div>
+  </div>
+
+  <!-- Invoice Preview Modal -->
+  <div id="invoicePreviewModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeInvoicePreview()">&times;</span>
+      <div id="invoicePreviewContent"></div>
+      <div style="margin-top: 20px; text-align: center;">
+        <button onclick="printInvoice()" class="btn btn-primary">Print Invoice</button>
+        <button onclick="closeInvoicePreview()" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentUser = null;
+    let invoiceItems = [];
+    let allItems = [];
+
+    fetch('/api/session').then(r => r.json()).then(user => {
+      if (!user) { window.location.href = '/'; return; }
+      currentUser = user;
+      document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
+      loadInvoices();
+      loadMetrics();
+    });
+
+    function handleLogout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    function openBillingModal() {
+      document.getElementById('billingModal').classList.add('active');
+      document.getElementById('billingForm').reset();
+      invoiceItems = [];
+      updateInvoiceItemsTable();
+      document.getElementById('billSelectedPatientInfo').style.display = 'none';
+      document.getElementById('billPatientResults').style.display = 'none';
+      document.getElementById('billingFormMessage').innerHTML = '';
+      loadDoctors();
+      loadAllItems();
+    }
+
+    function closeBillingModal() {
+      document.getElementById('billingModal').classList.remove('active');
+    }
+
+    function loadDoctors() {
+      fetch('/api/doctors/all')
+        .then(r => r.json())
+        .then(doctors => {
+          const select = document.querySelector('[name="doctorId"]');
+          doctors.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.doctorId;
+            option.textContent = d.name + ' - ' + d.specialization;
+            select.appendChild(option);
+          });
+        });
+    }
+
+    function loadAllItems() {
+      fetch('/api/items/all')
+        .then(r => r.json())
+        .then(items => {
+          allItems = items;
+          loadItemsByCategory();
+        });
+    }
+
+    function loadItemsByCategory() {
+      const category = document.getElementById('itemCategory').value;
+      const select = document.getElementById('itemSelect');
+      select.innerHTML = '<option value="">Choose an item</option>';
+      
+      const filteredItems = category ? allItems.filter(item => item.category === category) : allItems;
+      
+      filteredItems.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.itemId;
+        option.textContent = item.itemName + ' - ₱' + item.unitPrice;
+        option.dataset.name = item.itemName;
+        option.dataset.category = item.category;
+        option.dataset.price = item.unitPrice;
+        select.appendChild(option);
+      });
+    }
+
+    function searchPatientsForBilling() {
+      const searchTerm = document.getElementById('billPatientSearch').value;
+      if (searchTerm.length < 2) {
+        document.getElementById('billPatientResults').style.display = 'none';
+        return;
+      }
+      
+      fetch('/api/patients/search/' + searchTerm)
+        .then(r => r.json())
+        .then(patients => {
+          const resultsDiv = document.getElementById('billPatientResults');
+          if (patients.length === 0) {
+            resultsDiv.innerHTML = '<div style="padding: 10px; color: #999;">No patients found</div>';
+            resultsDiv.style.display = 'block';
+            return;
+          }
+          
+          let html = '';
+          patients.forEach(p => {
+            html += '<div class="patient-result" onclick="selectPatientForBilling(\'' + p.patientId + '\', \'' + 
+                    p.firstName + ' ' + p.lastName + '\')">';
+            html += '<strong>' + p.patientId + '</strong> - ' + p.firstName + ' ' + p.lastName + 
+                    ' (' + p.contactNumber + ')';
+            html += '</div>';
+          });
+          resultsDiv.innerHTML = html;
+          resultsDiv.style.display = 'block';
+        });
+    }
+
+    function selectPatientForBilling(patientId, patientName) {
+      document.getElementById('billPatientId').value = patientId;
+      document.getElementById('billPatientSearch').value = patientName;
+      document.getElementById('billPatientResults').style.display = 'none';
+      document.getElementById('billSelectedPatientInfo').innerHTML = 
+        '<strong>Selected:</strong> ' + patientId + ' - ' + patientName;
+      document.getElementById('billSelectedPatientInfo').style.display = 'block';
+    }
+
+    function addItemToInvoice() {
+      const select = document.getElementById('itemSelect');
+      const selectedOption = select.options[select.selectedIndex];
+      
+      if (!selectedOption.value) {
+        alert('Please select an item');
+        return;
+      }
+      
+      const quantity = parseInt(document.getElementById('itemQuantity').value);
+      const unitPrice = parseFloat(selectedOption.dataset.price);
+      const total = quantity * unitPrice;
+      
+      invoiceItems.push({
+        itemId: selectedOption.value,
+        itemName: selectedOption.dataset.name,
+        category: selectedOption.dataset.category,
+        unitPrice: unitPrice,
+        quantity: quantity,
+        total: total
+      });
+      
+      updateInvoiceItemsTable();
+      calculateInvoiceTotal();
+      
+      document.getElementById('itemSelect').value = '';
+      document.getElementById('itemQuantity').value = '1';
+    }
+
+    function removeInvoiceItem(index) {
+      invoiceItems.splice(index, 1);
+      updateInvoiceItemsTable();
+      calculateInvoiceTotal();
+    }
+
+    function updateInvoiceItemsTable() {
+      const tbody = document.getElementById('invoiceItemsBody');
+      if (invoiceItems.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No items added</td></tr>';
+        return;
+      }
+      
+      let html = '';
+      invoiceItems.forEach((item, index) => {
+        html += '<tr>';
+        html += '<td>' + item.itemName + '</td>';
+        html += '<td>' + item.category + '</td>';
+        html += '<td>₱' + item.unitPrice.toFixed(2) + '</td>';
+        html += '<td>' + item.quantity + '</td>';
+        html += '<td>₱' + item.total.toFixed(2) + '</td>';
+        html += '<td><button type="button" onclick="removeInvoiceItem(' + index + ')" class="btn btn-sm btn-secondary">Remove</button></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function calculateInvoiceTotal() {
+      const subtotal = invoiceItems.reduce((sum, item) => sum + item.total, 0);
+      const discountType = document.getElementById('discountType').value;
+      let discountAmount = 0;
+      
+      if (discountType === 'Senior Citizen' || discountType === 'PWD') {
+        discountAmount = subtotal * 0.20;
+      }
+      
+      const grandTotal = subtotal - discountAmount;
+      
+      document.getElementById('invoiceSubtotal').textContent = '₱' + subtotal.toFixed(2);
+      document.getElementById('invoiceDiscount').textContent = '₱' + discountAmount.toFixed(2);
+      document.getElementById('invoiceGrandTotal').textContent = '₱' + grandTotal.toFixed(2);
+    }
+
+    function handleBillingSubmit(event) {
+      event.preventDefault();
+      
+      if (invoiceItems.length === 0) {
+        alert('Please add at least one item to the invoice');
+        return;
+      }
+      
+      const formData = new FormData(event.target);
+      const subtotal = invoiceItems.reduce((sum, item) => sum + item.total, 0);
+      const discountType = document.getElementById('discountType').value;
+      let discountAmount = 0;
+      
+      if (discountType === 'Senior Citizen' || discountType === 'PWD') {
+        discountAmount = subtotal * 0.20;
+      }
+      
+      const grandTotal = subtotal - discountAmount;
+      const amountPaid = parseFloat(formData.get('amountPaid')) || 0;
+      const balance = grandTotal - amountPaid;
+      
+      const billingData = {
+        patientId: formData.get('patientId'),
+        doctorId: formData.get('doctorId'),
+        items: invoiceItems,
+        subtotal: subtotal,
+        discountType: discountType,
+        discountAmount: discountAmount,
+        grandTotal: grandTotal,
+        paymentMode: formData.get('paymentMode'),
+        amountPaid: amountPaid,
+        balance: balance,
+        paymentStatus: balance <= 0 ? 'Paid' : 'Partial',
+        createdBy: currentUser.userId
+      };
+      
+      document.getElementById('billingFormMessage').innerHTML = '<div class="success-message">Creating invoice...</div>';
+      
+      fetch('/api/billing/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(billingData)
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          document.getElementById('billingFormMessage').innerHTML = 
+            '<div class="success-message">✓ Invoice created! ID: ' + result.invoiceId + '</div>';
+          setTimeout(() => { 
+            closeBillingModal(); 
+            loadInvoices();
+            loadMetrics();
+            showInvoicePreview(result.invoiceId);
+          }, 1500);
+        } else {
+          document.getElementById('billingFormMessage').innerHTML = 
+            '<div class="error-message">Error: ' + result.message + '</div>';
+        }
+      });
+    }
+
+    function loadInvoices() {
+      fetch('/api/billing/recent?limit=20')
+        .then(r => r.json())
+        .then(invoices => {
+          const tbody = document.getElementById('invoiceListBody');
+          if (!invoices || invoices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">No invoices yet</td></tr>';
+            return;
+          }
+          
+          let html = '';
+          invoices.forEach(inv => {
+            const date = new Date(inv.invoiceDate).toLocaleDateString();
+            html += '<tr>';
+            html += '<td>' + inv.invoiceId + '</td>';
+            html += '<td>' + date + '</td>';
+            html += '<td>' + inv.patientName + '</td>';
+            html += '<td>₱' + parseFloat(inv.grandTotal).toFixed(2) + '</td>';
+            html += '<td>₱' + parseFloat(inv.amountPaid).toFixed(2) + '</td>';
+            html += '<td>₱' + parseFloat(inv.balance).toFixed(2) + '</td>';
+            html += '<td><span style="color: ' + (inv.paymentStatus === 'Paid' ? 'green' : 'orange') + '">' + inv.paymentStatus + '</span></td>';
+            html += '<td><button onclick="showInvoicePreview(\'' + inv.invoiceId + '\')" class="btn btn-sm btn-primary">View</button></td>';
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+        });
+    }
+
+    function loadMetrics() {
+      fetch('/api/billing/metrics')
+        .then(r => r.json())
+        .then(metrics => {
+          document.getElementById('todayRevenue').textContent = '₱' + (metrics.todayRevenue || 0).toFixed(2);
+          document.getElementById('pendingPayments').textContent = '₱' + (metrics.pendingPayments || 0).toFixed(2);
+          document.getElementById('totalInvoices').textContent = metrics.totalInvoices || 0;
+        });
+    }
+
+    function showInvoicePreview(invoiceId) {
+      fetch('/api/billing/invoice/' + invoiceId)
+        .then(r => r.json())
+        .then(invoice => {
+          let html = '<div style="padding: 20px;">';
+          html += '<div style="text-align: center; margin-bottom: 30px;">';
+          html += '<h1 style="color: #4A90E2;">🏥 Rizalcare Medical Clinic</h1>';
+          html += '<p>Medical Invoice</p>';
+          html += '</div>';
+          
+          html += '<div style="margin-bottom: 20px;">';
+          html += '<p><strong>Invoice ID:</strong> ' + invoice.invoiceId + '</p>';
+          html += '<p><strong>Date:</strong> ' + new Date(invoice.invoiceDate).toLocaleString() + '</p>';
+          html += '<p><strong>Patient:</strong> ' + invoice.patientName + ' (' + invoice.patientId + ')</p>';
+          html += '<p><strong>Doctor:</strong> ' + invoice.doctorName + '</p>';
+          html += '</div>';
+          
+          html += '<table style="width: 100%; border-collapse: collapse; margin: 20px 0;">';
+          html += '<thead><tr style="background: #f5f5f5;"><th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Item</th>';
+          html += '<th style="padding: 10px; border: 1px solid #ddd;">Qty</th>';
+          html += '<th style="padding: 10px; border: 1px solid #ddd;">Price</th>';
+          html += '<th style="padding: 10px; border: 1px solid #ddd;">Total</th></tr></thead><tbody>';
+          
+          const items = JSON.parse(invoice.itemsJson);
+          items.forEach(item => {
+            html += '<tr><td style="padding: 10px; border: 1px solid #ddd;">' + item.itemName + '</td>';
+            html += '<td style="padding: 10px; border: 1px solid #ddd; text-align: center;">' + item.quantity + '</td>';
+            html += '<td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₱' + item.unitPrice.toFixed(2) + '</td>';
+            html += '<td style="padding: 10px; border: 1px solid #ddd; text-align: right;">₱' + item.total.toFixed(2) + '</td></tr>';
+          });
+          
+          html += '</tbody></table>';
+          
+          html += '<div style="text-align: right; margin-top: 20px;">';
+          html += '<p><strong>Subtotal:</strong> ₱' + parseFloat(invoice.subtotal).toFixed(2) + '</p>';
+          if (invoice.discountType !== 'None') {
+            html += '<p style="color: #E74C3C;"><strong>Discount (' + invoice.discountType + '):</strong> -₱' + parseFloat(invoice.discountAmount).toFixed(2) + '</p>';
+          }
+          html += '<p style="font-size: 20px; color: #4A90E2;"><strong>Grand Total:</strong> ₱' + parseFloat(invoice.grandTotal).toFixed(2) + '</p>';
+          html += '<p><strong>Amount Paid:</strong> ₱' + parseFloat(invoice.amountPaid).toFixed(2) + '</p>';
+          html += '<p><strong>Balance:</strong> ₱' + parseFloat(invoice.balance).toFixed(2) + '</p>';
+          html += '<p><strong>Payment Mode:</strong> ' + invoice.paymentMode + '</p>';
+          html += '<p><strong>Payment Status:</strong> <span style="color: ' + 
+                  (invoice.paymentStatus === 'Paid' ? 'green' : 'orange') + '">' + invoice.paymentStatus + '</span></p>';
+          html += '</div>';
+          
+          html += '</div>';
+          
+          document.getElementById('invoicePreviewContent').innerHTML = html;
+          document.getElementById('invoicePreviewModal').classList.add('active');
+        });
+    }
+
+    function closeInvoicePreview() {
+      document.getElementById('invoicePreviewModal').classList.remove('active');
+    }
+
+    function printInvoice() {
+      window.print();
+    }
+  </script>
+</body>
+</html>

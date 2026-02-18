@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Rizalcare EMR</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .metric-card {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-left: 4px solid #4A90E2;
+    }
+    .metric-card.success { border-left-color: #50C878; }
+    .metric-card.warning { border-left-color: #F39C12; }
+    .metric-card.info { border-left-color: #3498DB; }
+    .metric-card.danger { border-left-color: #E74C3C; }
+    .metric-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+    .metric-label {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .metric-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #333;
+    }
+    .metric-change {
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    .metric-change.up { color: #50C878; }
+    .metric-change.down { color: #E74C3C; }
+    .chart-container {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 968px) {
+      .chart-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="clinic-name">🏥 Rizalcare Medical Clinic</div>
+      </div>
+      <div class="nav-right">
+        <span id="userDisplay"></span>
+        <button onclick="handleLogout()" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main-layout">
+      <aside class="sidebar">
+        <ul class="menu">
+          <li class="menu-item active">
+            <a href="/dashboard.html">📊 Dashboard</a>
+          </li>
+          <li class="menu-item">
+            <a href="/patients.html">👥 Patients</a>
+          </li>
+          <li class="menu-item">
+            <a href="/appointments.html">📅 Appointments</a>
+          </li>
+          <li class="menu-item">
+            <a href="/consultations.html">🩺 Consultations</a>
+          </li>
+          <li class="menu-item">
+            <a href="/doctors.html">👨‍⚕️ Doctors</a>
+          </li>
+          <li class="menu-item">
+            <a href="/items.html">💊 Items & Pricing</a>
+          </li>
+          <li class="menu-item">
+            <a href="/billing.html">💳 Billing</a>
+          </li>
+        </ul>
+      </aside>
+
+      <main class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1>Dashboard</h1>
+          <div style="display: flex; gap: 10px;">
+            <select id="dateFilter" onchange="loadDashboardData()" style="padding: 8px; border-radius: 5px; border: 1px solid #ddd;">
+              <option value="today">Today</option>
+              <option value="week">This Week</option>
+              <option value="month" selected>This Month</option>
+              <option value="year">This Year</option>
+            </select>
+            <button onclick="loadDashboardData()" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="metrics-grid">
+          <div class="metric-card success">
+            <div class="metric-icon">👥</div>
+            <div class="metric-label">Total Patients</div>
+            <div class="metric-value" id="totalPatients">0</div>
+            <div class="metric-change" id="patientsChange"></div>
+          </div>
+          <div class="metric-card info">
+            <div class="metric-icon">📅</div>
+            <div class="metric-label">Today's Appointments</div>
+            <div class="metric-value" id="todayAppointments">0</div>
+            <div class="metric-change" id="appointmentsChange"></div>
+          </div>
+          <div class="metric-card warning">
+            <div class="metric-icon">🩺</div>
+            <div class="metric-label">Consultations</div>
+            <div class="metric-value" id="totalConsultations">0</div>
+            <div class="metric-change" id="consultationsChange"></div>
+          </div>
+          <div class="metric-card success">
+            <div class="metric-icon">💰</div>
+            <div class="metric-label">Revenue</div>
+            <div class="metric-value" id="totalRevenue">₱0</div>
+            <div class="metric-change" id="revenueChange"></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">👨‍⚕️</div>
+            <div class="metric-label">Active Doctors</div>
+            <div class="metric-value" id="totalDoctors">0</div>
+          </div>
+          <div class="metric-card danger">
+            <div class="metric-icon">⚠️</div>
+            <div class="metric-label">Pending Payments</div>
+            <div class="metric-value" id="pendingPayments">₱0</div>
+          </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-grid">
+          <div class="chart-container">
+            <h3>Revenue Trend</h3>
+            <canvas id="revenueChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3>Patient Types</h3>
+            <canvas id="patientTypeChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="chart-container">
+            <h3>Consultations by Doctor</h3>
+            <canvas id="doctorConsultationsChart"></canvas>
+          </div>
+          <div class="chart-container">
+            <h3>Appointment Status</h3>
+            <canvas id="appointmentStatusChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <h3>Recent Consultations</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Chief Complaint</th>
+              </tr>
+            </thead>
+            <tbody id="recentConsultations">
+              <tr><td colspan="4" style="text-align: center; color: #999;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+          <h3>Upcoming Appointments</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Patient</th>
+                <th>Doctor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="upcomingAppointments">
+              <tr><td colspan="5" style="text-align: center; color: #999;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    let revenueChart, patientTypeChart, doctorConsultationsChart, appointmentStatusChart;
+
+    fetch('/api/session').then(r => r.json()).then(user => {
+      if (!user) {
+        window.location.href = '/';
+        return;
+      }
+      document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
+      loadDashboardData();
+    });
+
+    function handleLogout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    function loadDashboardData() {
+      const filter = document.getElementById('dateFilter').value;
+      
+      // Load all metrics
+      Promise.all([
+        fetch('/api/dashboard/metrics?filter=' + filter).then(r => r.json()),
+        fetch('/api/dashboard/revenue-trend?filter=' + filter).then(r => r.json()),
+        fetch('/api/dashboard/patient-types').then(r => r.json()),
+        fetch('/api/dashboard/doctor-consultations?filter=' + filter).then(r => r.json()),
+        fetch('/api/dashboard/appointment-status?filter=' + filter).then(r => r.json()),
+        fetch('/api/consultations/recent?limit=5').then(r => r.json()),
+        fetch('/api/dashboard/upcoming-appointments').then(r => r.json())
+      ]).then(([metrics, revenueTrend, patientTypes, doctorConsultations, appointmentStatus, recentConsultations, upcomingAppointments]) => {
+        updateMetrics(metrics);
+        updateRevenueChart(revenueTrend);
+        updatePatientTypeChart(patientTypes);
+        updateDoctorConsultationsChart(doctorConsultations);
+        updateAppointmentStatusChart(appointmentStatus);
+        updateRecentConsultations(recentConsultations);
+        updateUpcomingAppointments(upcomingAppointments);
+      });
+    }
+
+    function updateMetrics(metrics) {
+      document.getElementById('totalPatients').textContent = metrics.totalPatients || 0;
+      document.getElementById('todayAppointments').textContent = metrics.todayAppointments || 0;
+      document.getElementById('totalConsultations').textContent = metrics.totalConsultations || 0;
+      document.getElementById('totalRevenue').textContent = '₱' + (metrics.totalRevenue || 0).toFixed(2);
+      document.getElementById('totalDoctors').textContent = metrics.totalDoctors || 0;
+      document.getElementById('pendingPayments').textContent = '₱' + (metrics.pendingPayments || 0).toFixed(2);
+      
+      // Show changes
+      if (metrics.newPatients > 0) {
+        document.getElementById('patientsChange').innerHTML = '↑ ' + metrics.newPatients + ' new';
+        document.getElementById('patientsChange').className = 'metric-change up';
+      }
+    }
+
+    function updateRevenueChart(data) {
+      const ctx = document.getElementById('revenueChart').getContext('2d');
+      
+      if (revenueChart) revenueChart.destroy();
+      
+      revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: data.labels || [],
+          datasets: [{
+            label: 'Revenue',
+            data: data.values || [],
+            borderColor: '#4A90E2',
+            backgroundColor: 'rgba(74, 144, 226, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(value) {
+                  return '₱' + value;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updatePatientTypeChart(data) {
+      const ctx = document.getElementById('patientTypeChart').getContext('2d');
+      
+      if (patientTypeChart) patientTypeChart.destroy();
+      
+      patientTypeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: data.labels || ['New', 'Returning'],
+          datasets: [{
+            data: data.values || [0, 0],
+            backgroundColor: ['#4A90E2', '#50C878']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    function updateDoctorConsultationsChart(data) {
+      const ctx = document.getElementById('doctorConsultationsChart').getContext('2d');
+      
+      if (doctorConsultationsChart) doctorConsultationsChart.destroy();
+      
+      doctorConsultationsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: data.labels || [],
+          datasets: [{
+            label: 'Consultations',
+            data: data.values || [],
+            backgroundColor: '#50C878'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
+    function updateAppointmentStatusChart(data) {
+      const ctx = document.getElementById('appointmentStatusChart').getContext('2d');
+      
+      if (appointmentStatusChart) appointmentStatusChart.destroy();
+      
+      appointmentStatusChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+          labels: data.labels || ['Scheduled', 'Completed', 'Cancelled'],
+          datasets: [{
+            data: data.values || [0, 0, 0],
+            backgroundColor: ['#3498DB', '#50C878', '#E74C3C']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+
+    function updateRecentConsultations(consultations) {
+      const tbody = document.getElementById('recentConsultations');
+      if (!consultations || consultations.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">No recent consultations</td></tr>';
+        return;
+      }
+      
+      let html = '';
+      consultations.forEach(c => {
+        const date = new Date(c.consultationDate).toLocaleDateString();
+        html += '<tr>';
+        html += '<td>' + date + '</td>';
+        html += '<td>' + c.patientName + '</td>';
+        html += '<td>' + c.doctorName + '</td>';
+        html += '<td>' + (c.chiefComplaint || '').substring(0, 50) + '...</td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+
+    function updateUpcomingAppointments(appointments) {
+      const tbody = document.getElementById('upcomingAppointments');
+      if (!appointments || appointments.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #999;">No upcoming appointments</td></tr>';
+        return;
+      }
+      
+      let html = '';
+      appointments.forEach(a => {
+        html += '<tr>';
+        html += '<td>' + a.appointmentDate + '</td>';
+        html += '<td>' + a.appointmentTime + '</td>';
+        html += '<td>' + a.patientName + '</td>';
+        html += '<td>' + a.doctorName + '</td>';
+        html += '<td><span style="color: #3498DB;">' + a.status + '</span></td>';
+        html += '</tr>';
+      });
+      tbody.innerHTML = html;
+    }
+  </script>
+</body>
+</html>

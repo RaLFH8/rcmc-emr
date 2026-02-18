@@ -1,0 +1,114 @@
+<div class="settings-container">
+  <h1 style="margin-bottom: 30px;">System Settings</h1>
+
+  <!-- User Management -->
+  <div class="card">
+    <div class="card-header">User Management</div>
+    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+      Manage system users and their access levels. Default credentials are provided for testing.
+    </p>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Default Password</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>admin</td>
+            <td><span class="badge badge-error">Admin</span></td>
+            <td>admin123</td>
+          </tr>
+          <tr>
+            <td>doctor1</td>
+            <td><span class="badge badge-success">Doctor</span></td>
+            <td>doc123</td>
+          </tr>
+          <tr>
+            <td>reception</td>
+            <td><span class="badge badge-info">Reception</span></td>
+            <td>rec123</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Doctor Management -->
+  <div class="card">
+    <div class="card-header">Doctor Registry</div>
+    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+      Manage doctors in the dedicated "Doctors" menu for full add/edit functionality.
+    </p>
+    <div id="doctorsList"></div>
+  </div>
+
+  <!-- Items Management -->
+  <div class="card">
+    <div class="card-header">Service & Medicine Pricing</div>
+    <p style="color: var(--text-secondary); margin-bottom: 15px;">
+      Manage items and pricing in the dedicated "Items & Pricing" menu for full add/edit functionality.
+    </p>
+    <div id="itemsList"></div>
+  </div>
+
+  <!-- System Information -->
+  <div class="card">
+    <div class="card-header">System Information</div>
+    <p><strong>Clinic Name:</strong> Rizalcare Medical Clinic</p>
+    <p><strong>System Version:</strong> 1.0.0</p>
+    <p><strong>Database:</strong> Google Sheets</p>
+    <p style="margin-top: 20px; color: var(--text-secondary);">
+      This EMR system is built with Google Apps Script and uses Google Sheets as the database.
+      All data is stored securely in your Google Drive.
+    </p>
+  </div>
+</div>
+
+<script>
+function loadSettingsData() {
+  // Load doctors
+  google.script.run
+    .withSuccessHandler(function(doctors) {
+      var html = '<div class="table-container"><table><thead><tr><th>Doctor ID</th><th>Name</th><th>Specialization</th><th>Fee</th></tr></thead><tbody>';
+      doctors.forEach(function(doctor) {
+        html += '<tr>';
+        html += '<td>' + doctor.doctorId + '</td>';
+        html += '<td>' + doctor.name + '</td>';
+        html += '<td>' + doctor.specialization + '</td>';
+        html += '<td>₱' + doctor.consultationFee + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('doctorsList').innerHTML = html;
+    })
+    .getAllDoctors();
+  
+  // Load items
+  google.script.run
+    .withSuccessHandler(function(items) {
+      var html = '<div class="table-container"><table><thead><tr><th>Item ID</th><th>Name</th><th>Category</th><th>Price</th></tr></thead><tbody>';
+      items.forEach(function(item) {
+        html += '<tr>';
+        html += '<td>' + item.itemId + '</td>';
+        html += '<td>' + item.itemName + '</td>';
+        html += '<td><span class="badge badge-info">' + item.category + '</span></td>';
+        html += '<td>₱' + item.unitPrice + '</td>';
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('itemsList').innerHTML = html;
+    })
+    .getAllItems(false);
+}
+
+// Load settings when view is shown
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('settingsView').style.display !== 'none') {
+    loadSettingsData();
+  }
+});
+</script>

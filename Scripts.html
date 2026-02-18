@@ -1,0 +1,144 @@
+<script>
+// Global state
+var currentUser = null;
+
+// Initialize app
+document.addEventListener('DOMContentLoaded', function() {
+  checkSession();
+});
+
+// Session management
+function checkSession() {
+  google.script.run
+    .withSuccessHandler(function(session) {
+      if (session) {
+        currentUser = session;
+        showMainApp();
+      } else {
+        showLoginScreen();
+      }
+    })
+    .getUserSession();
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('mainApp').style.display = 'none';
+}
+
+function showMainApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  document.getElementById('userDisplay').textContent = currentUser.name + ' (' + currentUser.role + ')';
+  
+  // Show/hide menu items based on role
+  if (currentUser.role === 'Admin') {
+    document.getElementById('reportsMenu').style.display = 'block';
+    document.getElementById('settingsMenu').style.display = 'block';
+  } else {
+    document.getElementById('reportsMenu').style.display = 'none';
+    document.getElementById('settingsMenu').style.display = 'none';
+  }
+  
+  // Load dashboard by default
+  showView('dashboard');
+}
+
+// Login handler
+function handleLogin(event) {
+  event.preventDefault();
+  var username = document.getElementById('username').value;
+  var password = document.getElementById('password').value;
+  
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        currentUser = result.user;
+        showMainApp();
+      } else {
+        document.getElementById('loginError').textContent = result.message || 'Invalid credentials';
+        document.getElementById('loginError').style.display = 'block';
+      }
+    })
+    .authenticateUser(username, password);
+}
+
+// Logout handler
+function handleLogout() {
+  google.script.run
+    .withSuccessHandler(function() {
+      currentUser = null;
+      showLoginScreen();
+    })
+    .clearUserSession();
+}
+
+// View navigation
+function showView(viewName) {
+  // Hide all views
+  var views = document.querySelectorAll('.view-container');
+  views.forEach(function(view) {
+    view.style.display = 'none';
+  });
+  
+  // Remove active class from all menu items
+  var menuItems = document.querySelectorAll('.menu-item');
+  menuItems.forEach(function(item) {
+    item.classList.remove('active');
+  });
+  
+  // Show selected view
+  var viewId = viewName + 'View';
+  var viewElement = document.getElementById(viewId);
+  if (viewElement) {
+    viewElement.style.display = 'block';
+  }
+  
+  // Add active class to clicked menu item
+  event.target.closest('.menu-item').classList.add('active');
+  
+  // Load data for specific views
+  switch(viewName) {
+    case 'dashboard':
+      if (typeof loadDashboard === 'function') loadDashboard();
+      break;
+    case 'appointments':
+      if (typeof loadAppointments === 'function') loadAppointments();
+      break;
+    case 'doctors':
+      if (typeof loadDoctorsList === 'function') loadDoctorsList();
+      break;
+    case 'items':
+      if (typeof loadItemsList === 'function') loadItemsList();
+      break;
+    case 'settings':
+      if (typeof loadSettingsData === 'function') loadSettingsData();
+      break;
+  }
+}
+
+// Utility functions
+function formatCurrency(amount) {
+  return '₱' + parseFloat(amount).toFixed(2);
+}
+
+function formatDate(date) {
+  return new Date(date).toLocaleDateString('en-PH');
+}
+
+function formatDateTime(date) {
+  return new Date(date).toLocaleString('en-PH');
+}
+
+// Error handler
+function handleError(error) {
+  console.error('Error:', error);
+  alert('An error occurred: ' + error.message);
+}
+
+// Success handler
+function showSuccess(message) {
+  // You can implement a toast notification here
+  console.log('Success:', message);
+}
+</script>

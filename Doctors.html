@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctors - Rizalcare EMR</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal.active { display: flex; align-items: center; justify-content: center; }
+    .modal-content { background: white; border-radius: 10px; padding: 20px; max-width: 700px; width: 95%; max-height: 95vh; overflow-y: auto; }
+    .modal-close { float: right; font-size: 28px; cursor: pointer; color: #999; line-height: 1; }
+    .modal-close:hover { color: #333; }
+    .modal h2 { margin-bottom: 15px; font-size: 20px; clear: both; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-group { margin-bottom: 10px; }
+    .form-group label { font-size: 13px; margin-bottom: 3px; display: block; }
+    .form-group input, .form-group select { padding: 8px; font-size: 13px; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="main-app">
+    <nav class="top-nav">
+      <div class="nav-left">
+        <div class="clinic-name">🏥 Rizalcare Medical Clinic</div>
+      </div>
+      <div class="nav-right">
+        <span id="userDisplay"></span>
+        <button onclick="handleLogout()" class="btn btn-secondary btn-sm">Logout</button>
+      </div>
+    </nav>
+
+    <div class="main-layout">
+      <aside class="sidebar">
+        <ul class="menu">
+          <li class="menu-item"><a href="/dashboard.html">📊 Dashboard</a></li>
+          <li class="menu-item"><a href="/patients.html">👥 Patients</a></li>
+          <li class="menu-item"><a href="/appointments.html">📅 Appointments</a></li>
+          <li class="menu-item"><a href="/consultations.html">🩺 Consultations</a></li>
+          <li class="menu-item active"><a href="/doctors.html">👨‍⚕️ Doctors</a></li>
+          <li class="menu-item"><a href="/items.html">💊 Items & Pricing</a></li>
+        </ul>
+      </aside>
+
+      <main class="content-area">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1>Doctor Management</h1>
+          <button onclick="openDoctorModal()" class="btn btn-primary">+ Add New Doctor</button>
+        </div>
+
+        <div class="card">
+          <h3>Doctor List</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor ID</th>
+                <th>Name</th>
+                <th>Specialization</th>
+                <th>License Number</th>
+                <th>Contact</th>
+                <th>Consultation Fee</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="doctorListBody">
+              <tr><td colspan="8" style="text-align: center; color: #999;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Doctor Modal -->
+  <div id="doctorModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeDoctorModal()">&times;</span>
+      <h2 id="modalTitle">Add New Doctor</h2>
+      <form id="doctorForm" onsubmit="handleDoctorSubmit(event)">
+        <input type="hidden" id="doctorId" name="doctorId">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Full Name *</label>
+            <input type="text" name="name" required>
+          </div>
+          <div class="form-group">
+            <label>Specialization *</label>
+            <select name="specialization" required>
+              <option value="">Select</option>
+              <option value="General Practitioner">General Practitioner</option>
+              <option value="Pediatrician">Pediatrician</option>
+              <option value="Cardiologist">Cardiologist</option>
+              <option value="Dermatologist">Dermatologist</option>
+              <option value="Neurologist">Neurologist</option>
+              <option value="Orthopedic">Orthopedic</option>
+              <option value="Gynecologist">Gynecologist</option>
+              <option value="Psychiatrist">Psychiatrist</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>License Number *</label>
+            <input type="text" name="licenseNumber" required>
+          </div>
+          <div class="form-group">
+            <label>Contact Number *</label>
+            <input type="tel" name="contactNumber" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email">
+          </div>
+          <div class="form-group">
+            <label>Consultation Fee *</label>
+            <input type="number" name="consultationFee" required min="0" step="0.01">
+          </div>
+        </div>
+        <div class="form-group" id="statusGroup" style="display:none;">
+          <label>Status</label>
+          <select name="status">
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        
+        <div style="margin-top: 15px; display: flex; gap: 10px;">
+          <button type="submit" class="btn btn-primary">Save Doctor</button>
+          <button type="button" onclick="closeDoctorModal()" class="btn btn-secondary">Cancel</button>
+        </div>
+      </form>
+      <div id="doctorFormMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    fetch('/api/session').then(r => r.json()).then(user => {
+      if (!user) { window.location.href = '/'; return; }
+      document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
+      loadDoctors();
+    });
+
+    function handleLogout() {
+      fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    function openDoctorModal(doctor = null) {
+      document.getElementById('doctorModal').classList.add('active');
+      document.getElementById('doctorForm').reset();
+      document.getElementById('doctorFormMessage').innerHTML = '';
+      
+      if (doctor) {
+        document.getElementById('modalTitle').textContent = 'Edit Doctor';
+        document.getElementById('statusGroup').style.display = 'block';
+        document.getElementById('doctorId').value = doctor.doctorId;
+        document.querySelector('[name="name"]').value = doctor.name;
+        document.querySelector('[name="specialization"]').value = doctor.specialization;
+        document.querySelector('[name="licenseNumber"]').value = doctor.licenseNumber;
+        document.querySelector('[name="contactNumber"]').value = doctor.contactNumber;
+        document.querySelector('[name="email"]').value = doctor.email || '';
+        document.querySelector('[name="consultationFee"]').value = doctor.consultationFee;
+        document.querySelector('[name="status"]').value = doctor.status;
+      } else {
+        document.getElementById('modalTitle').textContent = 'Add New Doctor';
+        document.getElementById('statusGroup').style.display = 'none';
+      }
+    }
+
+    function closeDoctorModal() {
+      document.getElementById('doctorModal').classList.remove('active');
+    }
+
+    function handleDoctorSubmit(event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const doctorData = {};
+      formData.forEach((value, key) => { doctorData[key] = value; });
+      
+      const isEdit = !!doctorData.doctorId;
+      const url = isEdit ? '/api/doctors/update' : '/api/doctors/add';
+      const method = isEdit ? 'PUT' : 'POST';
+      
+      document.getElementById('doctorFormMessage').innerHTML = '<div class="success-message">Saving...</div>';
+      
+      fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(doctorData)
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          document.getElementById('doctorFormMessage').innerHTML = 
+            '<div class="success-message">✓ Doctor saved successfully!</div>';
+          setTimeout(() => { closeDoctorModal(); loadDoctors(); }, 1500);
+        } else {
+          document.getElementById('doctorFormMessage').innerHTML = 
+            '<div class="error-message">Error: ' + result.message + '</div>';
+        }
+      });
+    }
+
+    function loadDoctors() {
+      fetch('/api/doctors/all')
+        .then(r => r.json())
+        .then(doctors => {
+          const tbody = document.getElementById('doctorListBody');
+          if (!doctors || doctors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">No doctors yet</td></tr>';
+            return;
+          }
+          
+          let html = '';
+          doctors.forEach(d => {
+            html += '<tr>';
+            html += '<td>' + d.doctorId + '</td>';
+            html += '<td>' + d.name + '</td>';
+            html += '<td>' + d.specialization + '</td>';
+            html += '<td>' + d.licenseNumber + '</td>';
+            html += '<td>' + d.contactNumber + '</td>';
+            html += '<td>₱' + parseFloat(d.consultationFee).toFixed(2) + '</td>';
+            html += '<td><span style="color: ' + (d.status === 'Active' ? 'green' : 'red') + '">' + d.status + '</span></td>';
+            html += '<td><button onclick=\'editDoctor(' + JSON.stringify(d) + ')\' class="btn btn-sm btn-primary">Edit</button></td>';
+            html += '</tr>';
+          });
+          tbody.innerHTML = html;
+        });
+    }
+
+    function editDoctor(doctor) {
+      openDoctorModal(doctor);
+    }
+  </script>
+</body>
+</html>
