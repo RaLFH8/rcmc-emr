@@ -20,6 +20,71 @@ app.use(session({
 // Serve static files
 app.use(express.static(__dirname));
 
+// Serve HTML files explicitly (case-insensitive)
+app.get('/dashboard.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Dashboard.html'));
+});
+
+app.get('/Dashboard.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Dashboard.html'));
+});
+
+app.get('/patients.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Patients.html'));
+});
+
+app.get('/Patients.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Patients.html'));
+});
+
+app.get('/appointments.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Appointments.html'));
+});
+
+app.get('/Appointments.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Appointments.html'));
+});
+
+app.get('/consultations.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Consultations.html'));
+});
+
+app.get('/Consultations.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Consultations.html'));
+});
+
+app.get('/doctors.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Doctors.html'));
+});
+
+app.get('/Doctors.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Doctors.html'));
+});
+
+app.get('/items.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Items.html'));
+});
+
+app.get('/Items.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Items.html'));
+});
+
+app.get('/billing.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Billing.html'));
+});
+
+app.get('/Billing.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'Billing.html'));
+});
+
+app.get('/patientportal.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'PatientPortal.html'));
+});
+
+app.get('/PatientPortal.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'PatientPortal.html'));
+});
+
 // Main route
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'Index.html'));
