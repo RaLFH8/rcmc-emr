@@ -43,10 +43,10 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      // Query using full table name: schema.table
+      // Query user profile without the doctor join for now
       const { data, error } = await supabase
         .from('emr.user_profiles')
-        .select('*, doctor:emr.doctors(*)')
+        .select('*')
         .eq('id', userId)
         .single()
 

@@ -25,19 +25,15 @@ const UserManagement = () => {
 
   const loadData = async () => {
     try {
-      // Load user profiles using full table name
+      // Load user profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('emr.user_profiles')
-        .select(`
-          *,
-          doctor:emr.doctors(id, first_name, last_name, specialization)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (profilesError) throw profilesError
-      setUsers(profilesData || [])
 
-      // Load available doctors
+      // Load doctors separately
       const { data: doctorsData, error: doctorsError } = await supabase
         .from('emr.doctors')
         .select('*')
@@ -46,6 +42,17 @@ const UserManagement = () => {
 
       if (doctorsError) throw doctorsError
       setDoctors(doctorsData || [])
+
+      // Manually join doctor data to profiles
+      const profilesWithDoctors = (profilesData || []).map(profile => {
+        const doctor = doctorsData?.find(d => d.id === profile.doctor_id)
+        return {
+          ...profile,
+          doctor: doctor || null
+        }
+      })
+
+      setUsers(profilesWithDoctors)
     } catch (error) {
       console.error('Error loading data:', error)
       alert('Error loading users: ' + error.message)
