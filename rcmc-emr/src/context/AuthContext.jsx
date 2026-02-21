@@ -43,9 +43,9 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      // Query user profile without the doctor join for now
+      // Query from public schema (default)
       const { data, error } = await supabase
-        .from('emr.user_profiles')
+        .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single()

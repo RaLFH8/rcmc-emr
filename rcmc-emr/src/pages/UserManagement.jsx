@@ -25,15 +25,15 @@ const UserManagement = () => {
 
   const loadData = async () => {
     try {
-      // Load user profiles
+      // Load user profiles from public schema
       const { data: profilesData, error: profilesError } = await supabase
-        .from('emr.user_profiles')
+        .from('user_profiles')
         .select('*')
         .order('created_at', { ascending: false })
 
       if (profilesError) throw profilesError
 
-      // Load doctors separately
+      // Load doctors from emr schema
       const { data: doctorsData, error: doctorsError } = await supabase
         .from('emr.doctors')
         .select('*')
@@ -69,7 +69,7 @@ const UserManagement = () => {
       if (editingUser) {
         // Update existing user profile
         const { error } = await supabase
-          .from('emr.user_profiles')
+          .from('user_profiles')
           .update({
             full_name: formData.full_name,
             role: formData.role,
@@ -91,7 +91,7 @@ const UserManagement = () => {
 
         // Create user profile
         const { error: profileError } = await supabase
-          .from('emr.user_profiles')
+          .from('user_profiles')
           .insert([{
             id: authData.user.id,
             email: formData.email,
@@ -123,7 +123,7 @@ const UserManagement = () => {
     try {
       // Delete user profile
       const { error: profileError } = await supabase
-        .from('emr.user_profiles')
+        .from('user_profiles')
         .delete()
         .eq('id', userId)
 
