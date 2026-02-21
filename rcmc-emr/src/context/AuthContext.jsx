@@ -43,11 +43,10 @@ export const AuthProvider = ({ children }) => {
 
   const loadUserProfile = async (userId) => {
     try {
-      // Query from emr schema, not public
+      // Query using full table name: schema.table
       const { data, error } = await supabase
-        .schema('emr')
-        .from('user_profiles')
-        .select('*, doctor:doctors(*)')
+        .from('emr.user_profiles')
+        .select('*, doctor:emr.doctors(*)')
         .eq('id', userId)
         .single()
 
@@ -60,7 +59,6 @@ export const AuthProvider = ({ children }) => {
       setUserProfile(data)
     } catch (error) {
       console.error('Error loading user profile:', error)
-      // If profile doesn't exist, still set loading to false
       setUserProfile(null)
     } finally {
       setLoading(false)

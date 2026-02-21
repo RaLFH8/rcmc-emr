@@ -25,23 +25,21 @@ const UserManagement = () => {
 
   const loadData = async () => {
     try {
-      // Load user profiles from emr schema
+      // Load user profiles using full table name
       const { data: profilesData, error: profilesError } = await supabase
-        .schema('emr')
-        .from('user_profiles')
+        .from('emr.user_profiles')
         .select(`
           *,
-          doctor:doctors(id, first_name, last_name, specialization)
+          doctor:emr.doctors(id, first_name, last_name, specialization)
         `)
         .order('created_at', { ascending: false })
 
       if (profilesError) throw profilesError
       setUsers(profilesData || [])
 
-      // Load available doctors from emr schema
+      // Load available doctors
       const { data: doctorsData, error: doctorsError } = await supabase
-        .schema('emr')
-        .from('doctors')
+        .from('emr.doctors')
         .select('*')
         .eq('status', 'Active')
         .order('last_name')
@@ -64,8 +62,7 @@ const UserManagement = () => {
       if (editingUser) {
         // Update existing user profile
         const { error } = await supabase
-          .schema('emr')
-          .from('user_profiles')
+          .from('emr.user_profiles')
           .update({
             full_name: formData.full_name,
             role: formData.role,
@@ -77,7 +74,6 @@ const UserManagement = () => {
         alert('User updated successfully!')
       } else {
         // Create new user via Supabase Admin API
-        // Note: This requires admin privileges
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email: formData.email,
           password: formData.password,
@@ -86,10 +82,9 @@ const UserManagement = () => {
 
         if (authError) throw authError
 
-        // Create user profile in emr schema
+        // Create user profile
         const { error: profileError } = await supabase
-          .schema('emr')
-          .from('user_profiles')
+          .from('emr.user_profiles')
           .insert([{
             id: authData.user.id,
             email: formData.email,
@@ -119,10 +114,9 @@ const UserManagement = () => {
 
     setLoading(true)
     try {
-      // Delete user profile from emr schema
+      // Delete user profile
       const { error: profileError } = await supabase
-        .schema('emr')
-        .from('user_profiles')
+        .from('emr.user_profiles')
         .delete()
         .eq('id', userId)
 
