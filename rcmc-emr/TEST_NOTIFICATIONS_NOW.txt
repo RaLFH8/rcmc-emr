@@ -1,0 +1,78 @@
+🔔 TEST NOTIFICATIONS IN 3 STEPS
+=====================================
+
+STEP 1: CREATE TABLE IN SUPABASE
+---------------------------------
+1. Open Supabase Dashboard: https://supabase.com/dashboard
+2. Select your project
+3. Go to "SQL Editor" (left sidebar)
+4. Click "New Query"
+5. Copy ALL content from: CREATE_NOTIFICATIONS_TABLE.sql
+6. Paste into SQL Editor
+7. Click "Run" button
+8. Wait for success message ✅
+
+STEP 2: ADD TEST NOTIFICATION
+------------------------------
+1. In same SQL Editor, run this query to get your user ID:
+
+   SELECT id, email, full_name FROM user_profiles WHERE email = 'admin@rcmc.com';
+
+2. Copy the "id" value (it's a UUID like: d52b2be4-6a2c-4523-baa8-eabe6c22850d)
+
+3. Run this query (replace YOUR_USER_ID with the ID you copied):
+
+   INSERT INTO notifications (user_id, type, title, message, icon, color, link)
+   VALUES (
+     'YOUR_USER_ID_HERE',
+     'test',
+     'Welcome to Notifications! 🎉',
+     'Your notification system is now working perfectly',
+     'Bell',
+     'bg-teal-50 text-teal-600',
+     '/dashboard'
+   );
+
+4. You should see "Success. No rows returned"
+
+STEP 3: RESTART SERVER & TEST
+------------------------------
+1. In your terminal, press Ctrl+C to stop the server
+2. Run: npm run dev
+3. Wait for server to start
+4. Open browser: http://localhost:3002
+5. Login with: admin@rcmc.com / Admin123!
+6. Look at the bell icon in top right corner
+7. You should see a RED BADGE with number "1" ✅
+8. Click the bell icon
+9. You should see your notification! ✅
+10. Click the notification to mark it as read
+11. Click the X button to delete it
+
+THAT'S IT! 🎉
+=============
+
+If you see the notification, everything is working!
+
+NEXT STEPS:
+-----------
+- Read NOTIFICATION_SETUP_COMPLETE.md for full guide
+- Add notifications to your pages (Appointments, Payments, etc.)
+- Enjoy real-time notifications!
+
+TROUBLESHOOTING:
+----------------
+No badge showing?
+→ Check browser console (F12) for errors
+→ Verify user ID matches in SQL query
+→ Make sure you restarted the server
+
+Badge shows but no notification?
+→ Check SQL query ran successfully
+→ Try refreshing the page
+→ Check Supabase logs
+
+Still not working?
+→ Check CREATE_NOTIFICATIONS_TABLE.sql ran successfully
+→ Verify RLS policies were created
+→ Check browser console for errors

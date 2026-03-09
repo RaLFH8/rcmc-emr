@@ -1,0 +1,63 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║          ⚡ FRONTEND NOT RUNNING - START IT ⚡            ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+
+❌ PROBLEM:
+   Frontend is not running
+   That's why you see "site can't be reached"
+
+
+═══════════════════════════════════════════════════════════
+
+✅ SOLUTION - START FRONTEND:
+
+DOUBLE CLICK THIS FILE:
+   
+   ► START_FRONTEND_SIMPLE.bat ◄
+
+
+═══════════════════════════════════════════════════════════
+
+📺 WHAT YOU'LL SEE:
+
+   VITE v5.x.x ready in xxx ms
+   
+   ➜  Local:   http://localhost:3002/
+   ➜  Network: use --host to expose
+   ➜  press h + enter to show help
+
+
+═══════════════════════════════════════════════════════════
+
+✅ WHEN YOU SEE "Local: http://localhost:3002/"
+
+   1. Open browser
+   2. Go to: http://localhost:3002
+   3. Login: admin@rcmc.com / Admin123!
+   4. Go to Lab Results
+   5. Upload will work! 🎉
+
+
+═══════════════════════════════════════════════════════════
+
+📋 CURRENT STATUS:
+
+   Backend:  ✅ Running on port 3003
+   Frontend: ❌ Not running (needs to start)
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 JUST DO THIS:
+
+   Double-click: START_FRONTEND_SIMPLE.bat
+   
+   Wait for "Local: http://localhost:3002/"
+   
+   Open browser and test!
+
+
+═══════════════════════════════════════════════════════════

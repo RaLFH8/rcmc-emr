@@ -1,0 +1,42 @@
+✅ ALL ISSUES FIXED!
+====================
+
+1. ✅ ROOMS - FIXED
+   Problem: "malformed array literal" error
+   Solution: Convert amenities string to array before saving
+   - Empty string → []
+   - "TV, AC" → ["TV", "AC"]
+   
+2. ✅ SERVICES - FIXED  
+   Problem: "code column violates not-null constraint"
+   Solution: Auto-generate code (CATEGORY-TIMESTAMP)
+   
+3. ❓ PRESCRIPTIONS - NEEDS CHECKING
+   Problem: "New Prescription not showing"
+   Possible causes:
+   - You're logged in as receptionist (no access)
+   - Need to hard refresh browser
+   - Check sidebar for "Prescriptions" menu item
+
+📋 WHAT TO DO NOW:
+
+1. Refresh your browser (Ctrl+Shift+R)
+
+2. Check what role you're logged in as:
+   - admin@rcmc.com → Has Prescriptions access ✓
+   - doctor role → Has Prescriptions access ✓
+   - receptionist role → NO Prescriptions access ✗
+
+3. Look at the left sidebar menu:
+   - You should see "Prescriptions" between "Inventory" and "User Management"
+   - If you don't see it, you might be logged in as receptionist
+
+4. Test the fixes:
+   ✓ Add a room (should work now)
+   ✓ Add a service (should work now)
+   ✓ Click Prescriptions in sidebar (if visible)
+
+🎯 IF PRESCRIPTIONS STILL NOT VISIBLE:
+
+Check the file: rcmc-emr/DEBUG_PRESCRIPTIONS.txt
+It has detailed troubleshooting steps!

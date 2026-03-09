@@ -1,0 +1,154 @@
+✅ PAYMENT IMPORT/EXPORT FEATURE - READY TO USE
+
+=================================================================
+WHAT WAS ADDED:
+=================================================================
+
+1. EXPORT PAYMENTS TO CSV (Admin Only)
+   - Blue "Export" button in Payments page header
+   - Downloads all payment/billing data as CSV
+   - Includes all payment details, items, and discounts
+   - File named: payments_export_YYYY-MM-DD.csv
+
+2. IMPORT PAYMENTS FROM CSV (Admin Only)
+   - Green "Import" button in Payments page header
+   - Upload CSV file to bulk import payments
+   - Validates patient data before importing
+   - Shows success/error count after import
+
+3. ADMIN ROLE CHECK
+   - Only users with "admin" role can see buttons
+   - Secure and role-based access control
+
+=================================================================
+HOW TO USE - EXPORT:
+=================================================================
+
+STEP 1: Login as Admin
+   - Use admin@rcmc.com account
+
+STEP 2: Go to Payments & Billing Page
+   - Click "Payments" in sidebar
+
+STEP 3: Click Export Button
+   - Blue "Export" button in top-right
+   - CSV file downloads automatically
+   - Contains all payment records
+
+EXPORTED DATA INCLUDES:
+✓ Receipt Number
+✓ Date
+✓ Patient Name & Number
+✓ Total Amount, Amount Paid, Remaining Balance
+✓ Payment Method & Status
+✓ Discount Information (Type, %, Amount)
+✓ Items/Services breakdown
+✓ Notes
+
+=================================================================
+HOW TO USE - IMPORT:
+=================================================================
+
+STEP 1: Prepare CSV File
+   - Use the exported CSV as template
+   - Or use payment_import_template.csv
+   - Ensure patient numbers exist in system
+
+STEP 2: Click Import Button
+   - Green "Import" button in top-right
+   - Select your CSV file
+   - System validates and imports data
+
+STEP 3: Review Results
+   - Alert shows success/error count
+   - Successfully imported payments appear in list
+   - Failed rows are skipped (check patient numbers)
+
+CSV FORMAT REQUIREMENTS:
+- First row must be headers (will be skipped)
+- Patient Number must match existing patients
+- Receipt Number is auto-generated (leave empty)
+- Date format: YYYY-MM-DD
+- Items format: "Item Name (QtyxPrice); Item2 (QtyxPrice)"
+
+=================================================================
+SAMPLE CSV FORMAT:
+=================================================================
+
+Receipt Number,Date,Patient Name,Patient Number,Total Amount,Amount Paid,Remaining Balance,Payment Method,Status,Discount Type,Discount %,Discount Amount,Items,Notes
+,2025-02-26,Juan Dela Cruz,P-001,1000,1000,0,Cash,Paid,,,,"Consultation (1x ₱500); Medicine (2x ₱250)",Regular checkup
+,2025-02-26,Maria Santos,P-002,1500,1000,500,GCash,Partial,Senior Citizen,20,300,"Lab Test (1x ₱1200); X-Ray (1x ₱600)",Senior discount applied
+
+=================================================================
+ITEMS FORMAT:
+=================================================================
+
+Items should be formatted as:
+"Item Name (QuantityxPrice); Item2 (QuantityxPrice)"
+
+Examples:
+- "Consultation (1x ₱500)"
+- "Medicine (2x ₱250); Lab Test (1x ₱700)"
+- "Surgery (1x ₱2000); Follow-up (1x ₱300)"
+
+=================================================================
+IMPORTANT NOTES:
+=================================================================
+
+✓ Only Admin users can see Export/Import buttons
+✓ Export button is disabled if no payments exist
+✓ Import validates patient numbers before adding
+✓ Patient must exist in system (match by patient_number)
+✓ Failed imports don't affect existing data
+✓ CSV must be UTF-8 encoded
+✓ Special characters in fields are properly escaped
+
+=================================================================
+DISCOUNT INFORMATION:
+=================================================================
+
+When importing with discounts:
+- Discount Type: "Senior Citizen", "PWD", or "Senior Citizen & PWD"
+- Discount %: 20 (for 20%)
+- Discount Amount: Calculated amount in pesos
+- Leave empty if no discount
+
+=================================================================
+TROUBLESHOOTING:
+=================================================================
+
+If Export button doesn't appear:
+1. Make sure you're logged in as Admin
+2. Check user role in database (should be "admin" lowercase)
+3. Hard refresh the page (Ctrl+Shift+R)
+
+If Import fails:
+1. Check CSV format matches template
+2. Verify patient numbers exist in Patients table
+3. Ensure date format is YYYY-MM-DD
+4. Check items format: "Name (QtyxPrice)"
+5. Try exporting first to see correct format
+
+If patient not found error:
+1. Patient Number must match exactly
+2. Check Patients page for correct patient numbers
+3. Import patients first if needed
+
+=================================================================
+TESTING CHECKLIST:
+=================================================================
+
+1. ✅ Login as Admin
+2. ✅ Verify Export/Import buttons appear
+3. ✅ Export existing payments
+4. ✅ Open CSV in Excel/Sheets
+5. ✅ Modify CSV or use template
+6. ✅ Import CSV file
+7. ✅ Verify payments appear in list
+8. ✅ Check discount calculations
+9. ✅ Test with invalid patient number
+10. ✅ Verify error handling
+
+=================================================================
+
+Feature is ready to use! Login as Admin and refresh to see the buttons.

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTTP SMS Setup - Visual Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-left: 5px solid #667eea;
+            transition: transform 0.3s;
+        }
+        
+        .step:hover {
+            transform: translateX(10px);
+        }
+        
+        .step-number {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 50px;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-right: 20px;
+            float: left;
+        }
+        
+        .step-content {
+            overflow: hidden;
+        }
+        
+        .step h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .step p {
+            color: #666;
+            line-height: 1.8;
+            margin-bottom: 15px;
+        }
+        
+        .step ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .step li {
+            padding: 10px 0;
+            padding-left: 30px;
+            position: relative;
+            color: #444;
+        }
+        
+        .step li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+        
+        .code-box {
+            background: #2d3748;
+            color: #68d391;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .warning h3 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .success {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .success h3 {
+            color: #155724;
+            margin-bottom: 10px;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border-left: 5px solid #17a2b8;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .info h3 {
+            color: #0c5460;
+            margin-bottom: 10px;
+        }
+        
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            margin: 10px 10px 10px 0;
+            transition: transform 0.3s;
+        }
+        
+        .button:hover {
+            transform: scale(1.05);
+        }
+        
+        .cost-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        .cost-table th,
+        .cost-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .cost-table th {
+            background: #667eea;
+            color: white;
+        }
+        
+        .cost-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .footer {
+            background: #2d3748;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .emoji {
+            font-size: 2em;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📱 HTTP SMS Setup Guide</h1>
+            <p>FREE SMS Notifications for RCMC EMR</p>
+            <p>Setup Time: 10 Minutes | Cost: FREE</p>
+        </div>
+        
+        <div class="content">
+            <div class="success">
+                <h3>✅ What's Already Done</h3>
+                <p>✓ SMS service code updated (smsGateway.js)<br>
+                ✓ All notification functions implemented<br>
+                ✓ Environment configuration prepared<br>
+                ✓ Complete documentation created</p>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h2>Install HTTP SMS App</h2>
+                    <p><strong>Time: 3 minutes</strong></p>
+                    <ul>
+                        <li>Open Play Store on your Android phone</li>
+                        <li>Search for "HTTP SMS"</li>
+                        <li>Install the app (look for one by Avinash Kumar or similar)</li>
+                        <li>Open the app after installation</li>
+                        <li>Grant SMS permissions when asked</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h2>Configure HTTP SMS App</h2>
+                    <p><strong>Time: 3 minutes</strong></p>
+                    <ul>
+                        <li>In the app, find "Enable Server" or "Start Server" toggle</li>
+                        <li>Turn it ON (should be green or blue)</li>
+                        <li>Note the IP address and port displayed (e.g., 192.168.1.100:8080)</li>
+                        <li>Set a password (optional but recommended)</li>
+                        <li>Keep the app running in the background</li>
+                    </ul>
+                    <div class="info">
+                        <h3>📝 Write This Down</h3>
+                        <p>IP Address: _______________________<br>
+                        Port: _______________________<br>
+                        Password: _______________________</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h2>Update .env File</h2>
+                    <p><strong>Time: 2 minutes</strong></p>
+                    <ul>
+                        <li>Open your project folder: <code>rcmc-emr</code></li>
+                        <li>Find and open the <code>.env</code> file</li>
+                        <li>Look for these lines:</li>
+                    </ul>
+                    <div class="code-box">
+VITE_HTTP_SMS_URL=http://192.168.1.100:8080
+VITE_HTTP_SMS_PASSWORD=
+                    </div>
+                    <ul>
+                        <li>Replace with YOUR phone's IP address and password</li>
+                        <li>Save the file</li>
+                    </ul>
+                    <div class="warning">
+                        <h3>⚠️ Important</h3>
+                        <p>Make sure to include <code>http://</code> at the beginning!<br>
+                        Example: <code>http://192.168.1.100:8080</code></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <h2>Restart Dev Server</h2>
+                    <p><strong>Time: 1 minute</strong></p>
+                    <ul>
+                        <li>Stop the current server (press Ctrl+C in terminal)</li>
+                        <li>Start it again:</li>
+                    </ul>
+                    <div class="code-box">
+npm run dev
+                    </div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <h2>Test SMS Sending</h2>
+                    <p><strong>Time: 1 minute</strong></p>
+                    <ul>
+                        <li>Login to RCMC EMR</li>
+                        <li>Go to Appointments page</li>
+                        <li>Create a test appointment with YOUR mobile number</li>
+                        <li>Check if you receive the SMS</li>
+                        <li>Verify in HTTP SMS app logs</li>
+                    </ul>
+                    <div class="success">
+                        <h3>🎉 Success!</h3>
+                        <p>If you received the SMS, your setup is complete!</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="warning">
+                <h3>⚠️ Critical Requirements</h3>
+                <p>✓ Phone and computer MUST be on the SAME WiFi network<br>
+                ✓ HTTP Server must be enabled in the app (toggle ON)<br>
+                ✓ Phone must have load/credit on SIM card<br>
+                ✓ SMS permission must be granted to the app<br>
+                ✓ Keep HTTP SMS app running (don't force close)</p>
+            </div>
+            
+            <div class="info">
+                <h3>💰 Cost Estimate</h3>
+                <table class="cost-table">
+                    <thead>
+                        <tr>
+                            <th>Notification Type</th>
+                            <th>Estimated/Month</th>
+                            <th>Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Appointment Confirmations</td>
+                            <td>100 SMS</td>
+                            <td>₱100</td>
+                        </tr>
+                        <tr>
+                            <td>Appointment Reminders</td>
+                            <td>100 SMS</td>
+                            <td>₱100</td>
+                        </tr>
+                        <tr>
+                            <td>Payment Receipts</td>
+                            <td>80 SMS</td>
+                            <td>₱80</td>
+                        </tr>
+                        <tr>
+                            <td>Lab Results</td>
+                            <td>20 SMS</td>
+                            <td>₱20</td>
+                        </tr>
+                        <tr>
+                            <td><strong>TOTAL</strong></td>
+                            <td><strong>300 SMS</strong></td>
+                            <td><strong>₱300/month</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p>Much cheaper than cloud SMS services!</p>
+            </div>
+            
+            <div class="info">
+                <h3>📖 Need More Help?</h3>
+                <p>
+                    <a href="START_HERE_SMS.txt" class="button">Quick Start Guide</a>
+                    <a href="HTTP_SMS_SETUP_GUIDE.md" class="button">Complete Guide</a>
+                    <a href="SMS_TROUBLESHOOTING.md" class="button">Troubleshooting</a>
+                    <a href="SMS_GATEWAY_ALTERNATIVES.md" class="button">Other Options</a>
+                </p>
+            </div>
+            
+            <div class="success">
+                <h3>✨ Features You'll Get</h3>
+                <p>✓ Automatic appointment confirmations<br>
+                ✓ Appointment reminders (1 day before)<br>
+                ✓ Payment receipt notifications<br>
+                ✓ Lab results ready alerts<br>
+                ✓ Prescription ready notifications<br>
+                ✓ Staff billing notifications</p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="emoji">🎉</div>
+            <h2>You're Almost Done!</h2>
+            <p>Just install the app and update the .env file!</p>
+            <p style="margin-top: 20px; opacity: 0.8;">
+                Total Setup Time: ~10 minutes | Cost: FREE
+            </p>
+        </div>
+    </div>
+</body>
+</html>

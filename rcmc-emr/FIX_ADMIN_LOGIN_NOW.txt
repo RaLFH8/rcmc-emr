@@ -1,0 +1,78 @@
+🚨 ADMIN CAN'T LOG IN - QUICK FIX
+===================================
+
+The admin user is missing a user profile in the database.
+
+QUICK FIX (2 STEPS):
+====================
+
+STEP 1: Get Admin UUID
+-----------------------
+1. Go to Supabase Dashboard: https://imznlhualfuvstfyvdns.supabase.co
+2. Click "SQL Editor"
+3. Click "New Query"
+4. Run this:
+
+   SELECT id, email FROM auth.users WHERE email = 'admin@rcmc.com';
+
+5. COPY the UUID (the long ID)
+
+
+STEP 2: Create Admin Profile
+-----------------------------
+1. In the same SQL Editor, click "New Query"
+2. Paste this SQL and REPLACE the UUID:
+
+   INSERT INTO public.user_profiles (id, email, full_name, role, status, created_at)
+   VALUES (
+     'PASTE_UUID_HERE',
+     'admin@rcmc.com',
+     'Admin User',
+     'admin',
+     'Active',
+     NOW()
+   )
+   ON CONFLICT (id) DO UPDATE SET
+     email = EXCLUDED.email,
+     full_name = EXCLUDED.full_name,
+     role = EXCLUDED.role,
+     status = EXCLUDED.status;
+
+3. Click "Run"
+4. Done!
+
+
+TEST LOGIN:
+-----------
+1. Go to http://localhost:3002
+2. Login with:
+   Email: admin@rcmc.com
+   Password: Admin123!
+3. Should work now!
+
+
+IF ADMIN USER DOESN'T EXIST:
+=============================
+If Step 1 returns NO ROWS, the admin auth user is missing.
+
+Create it:
+1. Go to Supabase Dashboard > Authentication > Users
+2. Click "Add User"
+3. Fill in:
+   - Email: admin@rcmc.com
+   - Password: Admin123!
+   - Auto Confirm User: ✓ YES
+4. Click "Create User"
+5. Then go back to Step 1 above
+
+
+FULL DIAGNOSTIC:
+================
+For detailed troubleshooting, run the queries in:
+DEBUG_ADMIN_LOGIN.sql
+
+
+SERVER STATUS:
+==============
+✅ Server running on http://localhost:3002
+✅ Ready for testing after you create the profile

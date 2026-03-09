@@ -1,0 +1,42 @@
+✅ INVOICE NUMBER RENAMED TO ACKNOWLEDGMENT RECEIPT
+====================================================
+
+CHANGES MADE:
+-------------
+
+1. Payments.jsx (Frontend Display)
+   - Changed "Invoice Number" → "Acknowledgment Receipt"
+   - Changed "Invoice" table header → "Receipt #"
+   - Changed search placeholder text
+   - Updated all variable references: invoice_number → receipt_number
+
+2. supabase.js (Database Functions)
+   - Renamed generateInvoiceNumber() → generateReceiptNumber()
+   - Changed format: INV-YYYYMM-0001 → AR-YYYYMM-0001
+   - AR = Acknowledgment Receipt
+   - Database column still named "invoice_number" (no schema change needed)
+
+NEW FORMAT:
+-----------
+AR-202402-0001
+AR-202402-0002
+AR-202402-0003
+...
+
+WHERE IT APPEARS:
+-----------------
+✓ Payments list table (Receipt # column)
+✓ Payment details modal (Acknowledgment Receipt field)
+✓ Search functionality (search by receipt number)
+✓ Auto-generated when creating new payment
+
+WHAT TO DO NOW:
+---------------
+1. Server will auto-reload (hot-reload enabled)
+2. Refresh browser: Ctrl + Shift + R
+3. Test creating a new payment
+4. Receipt number will show as: AR-202402-0001 format
+5. All existing records will still display their invoice numbers
+
+NOTE: Database column name remains "invoice_number" for backward compatibility.
+Only the display labels and generated format have changed.

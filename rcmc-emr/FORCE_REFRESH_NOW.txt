@@ -1,0 +1,55 @@
+🔄 FORCE BROWSER REFRESH - DO THIS NOW!
+========================================
+
+The code has been updated but your browser is using OLD cached JavaScript.
+
+📋 STEP-BY-STEP INSTRUCTIONS:
+
+1. ⚠️ CLOSE ALL BROWSER TABS with http://localhost:3002
+
+2. 🔄 HARD REFRESH (choose your browser):
+
+   CHROME / EDGE:
+   - Windows: Ctrl + Shift + R
+   - Mac: Cmd + Shift + R
+   
+   FIREFOX:
+   - Windows: Ctrl + F5
+   - Mac: Cmd + Shift + R
+   
+   SAFARI:
+   - Mac: Cmd + Option + R
+
+3. 🔍 OPEN BROWSER CONSOLE (F12)
+   - Look for console logs starting with 🔍
+   - You should see:
+     🔍 User Role: receptionist (or admin/doctor)
+     ✅ Receptionist role - showing prescriptions
+     📋 Available Pages: [..., 'prescriptions']
+
+4. 📱 CHECK SIDEBAR
+   - Look for "Prescriptions" menu item
+   - It should be between "Inventory" and "User Management"
+   - Icon: Document/FileText icon
+
+5. ✅ IF YOU SEE IT:
+   - Click "Prescriptions"
+   - You should see the prescriptions page
+
+6. ❌ IF YOU STILL DON'T SEE IT:
+   - Check console logs (F12)
+   - Take a screenshot of the console
+   - Check what role is logged
+   - The logs will tell us exactly what's happening
+
+🎯 ALTERNATIVE: CLEAR ALL CACHE
+
+If hard refresh doesn't work:
+1. Open browser settings
+2. Clear browsing data
+3. Select "Cached images and files"
+4. Clear data
+5. Restart browser
+6. Go to http://localhost:3002
+
+The console logs will help us debug if it still doesn't work!

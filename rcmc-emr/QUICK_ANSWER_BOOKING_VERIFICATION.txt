@@ -1,0 +1,120 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║  QUICK ANSWERS: Online Booking System Verification                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+QUESTION 1: Does the system fix repeating patient names and not 
+            recording new patient names?
+
+✅ YES - FIXED!
+
+HOW IT WORKS:
+├─ NEW PATIENT: Creates record with ACTUAL name from form
+├─ EXISTING PATIENT: Uses EXISTING name from database
+├─ NO DUPLICATES: Checks phone/email before creating
+└─ ALL RECORDED: Every patient properly saved with correct info
+
+EXAMPLE:
+┌────────────────────────────────────────────────────────────────────┐
+│ Booking 1: Juan Dela Cruz (new patient)                           │
+│ → Creates patient: "Juan Dela Cruz" (P000001)                     │
+│                                                                    │
+│ Booking 2: Same phone number                                      │
+│ → Uses existing: "Juan Dela Cruz" (P000001)                       │
+│ → NO duplicate created                                            │
+│                                                                    │
+│ Booking 3: Maria Santos (new patient)                             │
+│ → Creates patient: "Maria Santos" (P000002)                       │
+└────────────────────────────────────────────────────────────────────┘
+
+RESULT: ✅ Each patient has correct name, no repeating names
+
+═══════════════════════════════════════════════════════════════════════
+
+QUESTION 2: Does the time get locked if already booked or the time 
+            has passed?
+
+✅ YES - BOTH ARE LOCKED!
+
+PART A: ALREADY BOOKED TIMES ✅
+├─ System checks existing appointments
+├─ Marks booked times as unavailable
+├─ Only shows available slots
+└─ Prevents double booking
+
+EXAMPLE:
+┌────────────────────────────────────────────────────────────────────┐
+│ Dr. Smith - Tomorrow - 10:00 AM                                    │
+│                                                                    │
+│ Booking 1: Juan books 10:00 AM ✅                                  │
+│ → Appointment created                                             │
+│                                                                    │
+│ Booking 2: Maria tries to book 10:00 AM                           │
+│ → 10:00 AM NOT shown (already booked)                             │
+│ → Can only see: 10:20 AM, 10:40 AM, 11:00 AM, etc.               │
+└────────────────────────────────────────────────────────────────────┘
+
+PART B: PAST TIME SLOTS ✅
+├─ For TODAY: Filters out past times
+├─ Adds 20-minute buffer
+├─ Only shows future slots
+└─ Prevents booking in the past
+
+EXAMPLE:
+┌────────────────────────────────────────────────────────────────────┐
+│ Current Time: 2:00 PM                                              │
+│ Selected Date: TODAY                                               │
+│                                                                    │
+│ Available Slots:                                                   │
+│ ❌ 10:00 AM (past)                                                 │
+│ ❌ 12:00 PM (past)                                                 │
+│ ❌ 2:00 PM (past + buffer)                                         │
+│ ✅ 2:20 PM (available)                                             │
+│ ✅ 2:40 PM (available)                                             │
+│ ✅ 3:00 PM (available)                                             │
+└────────────────────────────────────────────────────────────────────┘
+
+RESULT: ✅ Booked slots locked, past times locked
+
+═══════════════════════════════════════════════════════════════════════
+
+╔══════════════════════════════════════════════════════════════════════╗
+║  SUMMARY                                                             ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+1. PATIENT NAMES: ✅ FIXED
+   - New patients recorded with actual names
+   - No repeating/duplicate names
+   - All patients properly saved
+
+2. TIME SLOT LOCKING: ✅ WORKING
+   - Booked slots are locked (unavailable)
+   - Past times are locked (unavailable)
+   - Only available future slots shown
+   - Double booking prevented
+
+╔══════════════════════════════════════════════════════════════════════╗
+║  HOW TO TEST                                                         ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+TEST 1: Patient Names
+1. Book as "Juan Dela Cruz" (new patient)
+2. Check Patients module → Should show "Juan Dela Cruz"
+3. Book again with same phone → Uses existing "Juan Dela Cruz"
+4. ✅ No duplicate created
+
+TEST 2: Booked Slots
+1. Book appointment for tomorrow at 10:00 AM
+2. Try to book same doctor, date, time again
+3. ✅ 10:00 AM should NOT appear in available slots
+
+TEST 3: Past Times
+1. Open booking page at 2:00 PM
+2. Select today's date
+3. ✅ Should only see slots AFTER 2:20 PM
+
+═══════════════════════════════════════════════════════════════════════
+
+BOTH ISSUES ARE PROPERLY HANDLED! 🎉
+
+For detailed technical verification, see:
+→ VERIFICATION_BOOKING_ISSUES.md

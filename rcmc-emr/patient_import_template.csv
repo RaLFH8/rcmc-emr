@@ -1,0 +1,6 @@
+Patient Number,First Name,Last Name,Date of Birth,Age,Gender,Contact Number,Email,Address,Blood Type,Allergies,Medical History,Emergency Contact Name,Emergency Contact Number,Height (cm),Weight (kg),Blood Pressure,Temperature (°C),Heart Rate (bpm),Respiratory Rate,Oxygen Saturation (%)
+,Juan,Dela Cruz,1980-05-15,,Male,09171234567,juan.delacruz@email.com,"123 Main St, Manila",O+,None,Hypertension,Maria Dela Cruz,09187654321,170,75,120/80,36.5,72,16,98
+,Maria,Santos,1995-08-20,,Female,09281234567,maria.santos@email.com,"456 Rizal Ave, Quezon City",A+,Penicillin,None,Jose Santos,09287654321,160,60,110/70,36.6,68,14,99
+,Pedro,Reyes,1975-12-10,,Male,09331234567,pedro.reyes@email.com,"789 Bonifacio St, Makati",B+,Aspirin,Diabetes Type 2,Ana Reyes,09337654321,175,80,130/85,36.7,75,18,97
+,Rosa,Garcia,1988-03-25,,Female,09441234567,rosa.garcia@email.com,"321 Luna St, Pasig",AB+,None,Asthma,Carlos Garcia,09447654321,165,65,115/75,36.4,70,15,99
+,Jose,Martinez,1992-07-18,,Male,09551234567,jose.martinez@email.com,"654 Aguinaldo Ave, Taguig",O-,Shellfish,None,Linda Martinez,09557654321,168,72,118/78,36.5,73,17,98

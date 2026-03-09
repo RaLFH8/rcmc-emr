@@ -1,0 +1,60 @@
+========================================
+INPATIENT ADMISSION ERROR - FIXED
+========================================
+
+ERROR MESSAGE:
+"Failed to admit patient: new row for relation "inpatients" violates check constraint "inpatients_status_check""
+
+ROOT CAUSE:
+Database constraint mismatch with application values
+
+DATABASE CONSTRAINT (OLD):
+- Admitted
+- Discharged  
+- Transferred
+
+APPLICATION VALUES (CURRENT):
+- Stable
+- Critical
+- Improving
+- Observation
+
+========================================
+SOLUTION: Run SQL Script
+========================================
+
+FILE: FIX_INPATIENTS_STATUS_CONSTRAINT.sql
+
+QUICK FIX (Copy this to Supabase SQL Editor):
+---
+ALTER TABLE inpatients DROP CONSTRAINT IF EXISTS inpatients_status_check;
+ALTER TABLE inpatients ADD CONSTRAINT inpatients_status_check CHECK (status IN ('Stable', 'Critical', 'Improving', 'Observation', 'Discharged'));
+---
+
+STEPS:
+1. Open Supabase (https://supabase.com)
+2. Go to SQL Editor
+3. Paste the SQL above
+4. Click Run
+5. Test admitting a patient
+
+TIME TO FIX: 2 minutes
+DIFFICULTY: Easy
+
+========================================
+AFTER RUNNING THE FIX
+========================================
+
+✅ Patient admission will work
+✅ All status values accepted
+✅ No more constraint errors
+✅ System fully functional
+
+========================================
+DOCUMENTATION
+========================================
+
+Full Guide: FIX_INPATIENTS_STATUS_NOW.md
+SQL Script: FIX_INPATIENTS_STATUS_CONSTRAINT.sql
+
+Run the SQL script to fix the issue immediately!

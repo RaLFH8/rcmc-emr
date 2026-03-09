@@ -1,0 +1,38 @@
+✅ FIXED SQL SCRIPT - RUN THIS NOW!
+====================================
+
+The script has been fixed. The sample data section that was causing the error has been removed.
+
+📋 STEP 1: RUN THE MAIN SCRIPT
+
+1. Open Supabase Dashboard: https://imznlhualfuvstfyvdns.supabase.co
+2. Go to SQL Editor (left sidebar)
+3. Copy ALL content from: rcmc-emr/ADD_ALL_MISSING_TABLES.sql
+4. Paste into SQL Editor
+5. Click RUN
+
+This will create all the missing tables and columns WITHOUT sample data.
+
+📋 STEP 2 (OPTIONAL): ADD SAMPLE DATA
+
+After Step 1 succeeds, you can optionally add sample data:
+
+1. Copy content from: rcmc-emr/ADD_SAMPLE_DATA_OPTIONAL.sql
+2. Paste into SQL Editor
+3. Click RUN
+
+Or you can skip this and add rooms/services manually through the app.
+
+🎯 WHAT'S FIXED:
+
+- Removed the sample data inserts that were causing "column code does not exist" error
+- The main script now only creates tables, columns, policies, and triggers
+- Sample data is now optional and in a separate file
+
+✅ AFTER RUNNING:
+
+Your app should work without these errors:
+- "daily_notes column not found" ✓ FIXED
+- "prescriptions table not found" ✓ FIXED
+- "rooms table not found" ✓ FIXED
+- "services table not found" ✓ FIXED

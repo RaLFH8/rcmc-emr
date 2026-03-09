@@ -1,0 +1,61 @@
+🔍 DEBUG: PRESCRIPTIONS NOT SHOWING
+====================================
+
+ISSUE: "New Prescription" button/page not visible
+
+POSSIBLE CAUSES:
+
+1. ❓ USER ROLE ISSUE
+   - Prescriptions is only available for: admin, doctor
+   - NOT available for: receptionist
+   
+   CHECK YOUR ROLE:
+   - Open browser console (F12)
+   - Look for your user profile info
+   - Or check the top right corner of the app for your name/role
+
+2. ❓ SIDEBAR MENU ITEM
+   - The menu item should be visible in the left sidebar
+   - Look for "Prescriptions" with a document icon
+   - It appears between "Inventory" and "User Management"
+
+3. ❓ BROWSER CACHE
+   - Try hard refresh: Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+   - Or clear browser cache and reload
+
+📋 HOW TO TEST:
+
+STEP 1: Check your login role
+   - What email did you login with?
+   - admin@rcmc.com should have admin role
+   - Check if you see "User Management" in sidebar (admin only)
+
+STEP 2: Look at the sidebar
+   - Do you see these menu items?
+     ✓ Dashboard
+     ✓ Appointment  
+     ✓ Room
+     ✓ Payment
+     ✓ Doctor
+     ✓ Patient
+     ✓ Inpatient
+     ✓ Services
+     ✓ Inventory
+     ❓ Prescriptions  <-- Is this visible?
+     ✓ User Management (admin only)
+
+STEP 3: Click Prescriptions
+   - If you see it in sidebar, click it
+   - You should see a page with "New Prescription" button
+
+🔧 QUICK FIX:
+
+If you're logged in as receptionist:
+   - Receptionist role does NOT have access to Prescriptions
+   - You need to login as admin or doctor
+   - Use: admin@rcmc.com / Admin123!
+
+If you're logged in as admin or doctor but still don't see it:
+   - Hard refresh the browser (Ctrl+Shift+R)
+   - Check browser console for errors (F12)
+   - Make sure the server is running on port 3002

@@ -1,0 +1,43 @@
+========================================
+  INSTALL BACKEND - DO THIS NOW
+========================================
+
+EASIEST WAY:
+------------
+1. Double-click: INSTALL_BACKEND_NOW.bat
+2. Wait 2 minutes
+3. Done!
+
+
+MANUAL WAY:
+-----------
+1. Open Command Prompt (cmd)
+2. Type: cd C:\Users\ralfh\Desktop\Kiro\rcmc-emr\server
+3. Type: npm install
+4. Wait 2 minutes
+5. Done!
+
+
+WHAT HAPPENS:
+-------------
+- Downloads backend packages
+- Creates node_modules folder
+- Takes 2-3 minutes
+- Uses ~50 MB disk space
+
+
+AFTER INSTALLATION:
+-------------------
+1. Create server/.env file
+2. Add google-credentials.json
+3. Run START_BACKEND.bat
+
+
+NEED HELP?
+----------
+Read: BACKEND_INSTALL_INSTRUCTIONS.md
+
+
+========================================
+  Just run INSTALL_BACKEND_NOW.bat!
+========================================

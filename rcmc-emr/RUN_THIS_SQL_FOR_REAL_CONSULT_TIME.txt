@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════════════════════════════
+  COPY THIS ENTIRE SQL CODE AND PASTE IT IN SUPABASE SQL EDITOR
+═══════════════════════════════════════════════════════════════════════════
+
+This will make your Average Consult Time use REAL DATA calculated from actual
+appointment timestamps (from when consultation starts to when it completes).
+
+HOW IT WORKS:
+1. When appointment status → "In Progress" = started_at timestamp recorded
+2. When appointment status → "Completed" = completed_at timestamp recorded  
+3. Average Consult Time = (completed_at - started_at) averaged across all
+
+AUTOMATIC TRIGGER INCLUDED - No manual data entry needed!
+
+═══════════════════════════════════════════════════════════════════════════
+
+OPEN FILE: rcmc-emr/ADD_DOCTOR_PERFORMANCE_FIELDS.sql
+
+Copy the ENTIRE contents of that file and paste it into Supabase SQL Editor.
+
+Then click "RUN" button.
+
+═══════════════════════════════════════════════════════════════════════════
+
+WHAT WILL HAPPEN:
+✅ Adds started_at and completed_at timestamp fields to appointments table
+✅ Adds patient_rating field (for future satisfaction rating feature)
+✅ Creates indexes for fast queries
+✅ Creates automatic trigger to set timestamps when status changes
+✅ Populates existing completed appointments with sample data (optional)
+
+AFTER RUNNING:
+- Refresh your dashboard
+- Average Consult Time will show real data (e.g., "28 min")
+- Code is already updated to use the new calculation method
+
+═══════════════════════════════════════════════════════════════════════════
+
+NEXT: You mentioned you have a separate prompt for satisfaction rating.
+The patient_rating field is already added and ready to use when you're ready!
+
+═══════════════════════════════════════════════════════════════════════════

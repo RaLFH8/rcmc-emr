@@ -1,17 +1,26 @@
-import { LayoutDashboard, Calendar, Bed, CreditCard, Stethoscope, Users, UserPlus, ChevronLeft, LogOut, Settings } from 'lucide-react'
+import { useState } from 'react'
+import { LayoutDashboard, Calendar, Bed, CreditCard, Stethoscope, Users, UserPlus, LogOut, Settings, Package, Pill, FileText, Menu, X, BarChart3, FlaskConical, CalendarCheck, ClipboardList } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
-const Sidebar = ({ currentPage, setCurrentPage, collapsed, setCollapsed, availablePages, userProfile }) => {
+const Sidebar = ({ currentPage, setCurrentPage, collapsed, availablePages, userProfile }) => {
   const { signOut } = useAuth()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   
   const allMenuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'appointments', label: 'Appointment', icon: Calendar },
+    { id: 'online-bookings', label: 'Online Bookings', icon: CalendarCheck },
     { id: 'rooms', label: 'Room', icon: Bed },
     { id: 'payments', label: 'Payment', icon: CreditCard },
     { id: 'doctors', label: 'Doctor', icon: Stethoscope },
     { id: 'patients', label: 'Patient', icon: Users },
     { id: 'inpatients', label: 'Inpatient', icon: UserPlus },
+    { id: 'services', label: 'Services', icon: Package },
+    { id: 'inventory', label: 'Inventory', icon: Pill },
+    { id: 'prescriptions', label: 'Prescriptions', icon: FileText },
+    { id: 'orders', label: "Doctor's Orders", icon: ClipboardList },
+    { id: 'lab-results', label: 'Lab Results', icon: FlaskConical },
+    { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'users', label: 'User Management', icon: Settings },
   ]
 
@@ -22,35 +31,68 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed, setCollapsed, availab
     await signOut()
   }
 
+  const handleMenuItemClick = (itemId) => {
+    setCurrentPage(itemId)
+    setIsMobileMenuOpen(false) // Close mobile menu after selection
+  }
+
   return (
-    <div className={`bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ${collapsed ? 'w-20' : 'w-60'}`}>
+    <>
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-3 bg-teal-500 text-white rounded-xl shadow-lg hover:bg-teal-600 transition-colors"
+        aria-label="Toggle menu"
+      >
+        {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <div className={`
+        fixed lg:static inset-y-0 left-0 z-40
+        bg-white border-r border-slate-200 flex flex-col
+        transition-all duration-300
+        ${collapsed ? 'w-20' : 'w-60'}
+        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+      `}>
       {/* Logo */}
-      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200">
+      <div className="h-20 flex items-center justify-between px-6 border-b border-slate-200">
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center shadow-sm">
-              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
+          <div className="flex items-center gap-3">
+            <div className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden">
+              <img 
+                src="/RCMC_LOGO-removebg-preview.png" 
+                alt="Rizalcare Medical Clinic Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
-            <span className="font-bold text-lg text-slate-900">MediLens</span>
+            <div className="flex flex-col">
+              <span className="font-bold text-xl text-slate-900 leading-tight">Rizalcare</span>
+              <span className="text-sm text-slate-600 leading-tight">Medical Clinic</span>
+            </div>
           </div>
         )}
         {collapsed && (
-          <div className="w-9 h-9 bg-gradient-to-br from-teal-400 to-teal-600 rounded-lg flex items-center justify-center shadow-sm mx-auto">
-            <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center overflow-hidden mx-auto">
+            <img 
+              src="/RCMC_LOGO-removebg-preview.png" 
+              alt="Rizalcare Medical Clinic Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6">
+      <nav className="flex-1 py-6 overflow-y-auto">
         <div className="px-3 mb-2">
           {!collapsed && <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider px-3">Navigation</p>}
         </div>
@@ -62,8 +104,8 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed, setCollapsed, availab
             return (
               <button
                 key={item.id}
-                onClick={() => setCurrentPage(item.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+                onClick={() => handleMenuItemClick(item.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors min-h-[44px] ${
                   isActive
                     ? 'bg-teal-50 text-teal-600'
                     : 'text-slate-600 hover:bg-slate-50'
@@ -100,7 +142,8 @@ const Sidebar = ({ currentPage, setCurrentPage, collapsed, setCollapsed, availab
           </button>
         )}
       </div>
-    </div>
+      </div>
+    </>
   )
 }
 

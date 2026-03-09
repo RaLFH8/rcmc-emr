@@ -1,0 +1,33 @@
+═══════════════════════════════════════════════════════
+COPY AND RUN THIS SQL IN SUPABASE
+═══════════════════════════════════════════════════════
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Allow anonymous insert for online booking" ON patients;
+DROP POLICY IF EXISTS "Allow anonymous select by contact" ON patients;
+
+-- Allow anonymous users to INSERT patients
+CREATE POLICY "Allow anonymous insert for online booking"
+ON patients
+FOR INSERT
+TO anon
+WITH CHECK (true);
+
+-- Allow anonymous users to SELECT patients
+CREATE POLICY "Allow anonymous select by contact"
+ON patients
+FOR SELECT
+TO anon
+USING (true);
+
+═══════════════════════════════════════════════════════
+
+STEPS:
+1. Go to Supabase Dashboard
+2. Click "SQL Editor"
+3. Click "New Query"
+4. Copy the SQL above
+5. Paste and click "Run"
+6. Test booking again
+
+═══════════════════════════════════════════════════════

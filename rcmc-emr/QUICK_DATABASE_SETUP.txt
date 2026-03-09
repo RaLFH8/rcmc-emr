@@ -1,0 +1,61 @@
+🚀 QUICK DATABASE SETUP - 3 STEPS
+===================================
+
+STEP 1: RUN SQL IN SUPABASE
+----------------------------
+1. Go to: https://supabase.com/dashboard
+2. Open your RCMC EMR project
+3. Click "SQL Editor" → "New Query"
+4. Copy ALL from: CREATE_NOTIFICATIONS_TABLE.sql
+5. Paste and click "RUN"
+6. Wait for success ✅
+
+STEP 2: ADD TEST NOTIFICATION
+------------------------------
+Run this in SQL Editor:
+
+-- Get your user ID
+SELECT id FROM user_profiles WHERE email = 'admin@rcmc.com';
+
+-- Copy the ID, then run this (replace YOUR_USER_ID):
+INSERT INTO notifications (user_id, type, title, message, icon, color)
+VALUES (
+  'YOUR_USER_ID_HERE',
+  'test',
+  'Welcome! 🎉',
+  'Notifications working!',
+  'Bell',
+  'bg-teal-50 text-teal-600'
+);
+
+STEP 3: RESTART & TEST
+-----------------------
+Terminal:
+  Ctrl+C
+  npm run dev
+
+Browser:
+  http://localhost:3002
+  Login: admin@rcmc.com / Admin123!
+  Look at bell icon → Should show badge "1"
+  Click bell → See beautiful notification!
+
+DONE! 🎉
+========
+
+Your notifications now have:
+✨ Professional design
+💫 Smooth animations
+🎨 Beautiful gradients
+🔔 Pulsing badge
+⚡ Real-time updates
+
+FULL GUIDES:
+------------
+📖 RUN_THIS_IN_SUPABASE_NOW.txt - Step by step
+📖 SUPABASE_SETUP_VISUAL_GUIDE.md - Visual guide
+📖 NOTIFICATION_SETUP_COMPLETE.md - Complete guide
+
+===================================
+🚀 3 steps to beautiful notifications!
+===================================

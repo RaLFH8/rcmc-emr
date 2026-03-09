@@ -6,22 +6,442 @@
   <title>Appointments - Rizalcare EMR</title>
   <link rel="stylesheet" href="/styles.css">
   <style>
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto; }
-    .modal.active { display: block; }
-    .modal-content { background: white; border-radius: 10px; padding: 20px; max-width: 800px; width: 95%; margin: 20px auto; }
-    .modal-close { float: right; font-size: 28px; cursor: pointer; color: #999; line-height: 1; }
-    .modal-close:hover { color: #333; }
-    .modal h2 { margin-bottom: 15px; font-size: 20px; clear: both; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .form-group { margin-bottom: 15px; }
-    .form-group label { font-size: 13px; margin-bottom: 5px; display: block; font-weight: 500; }
-    .form-group input, .form-group select, .form-group textarea { padding: 10px; font-size: 14px; width: 100%; border: 1px solid #ddd; border-radius: 4px; }
-    .patient-result { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
-    .patient-result:hover { background: #f5f5f5; }
-    .badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-    .badge-scheduled { background: #E3F2FD; color: #1976D2; }
-    .badge-completed { background: #E8F5E9; color: #388E3C; }
-    .badge-cancelled { background: #FFEBEE; color: #D32F2F; }
+    /* macOS Sequoia Calendar Style */
+    .calendar-container {
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+    
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 24px;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(20px);
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+    }
+    
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .calendar-nav button {
+      width: 30px;
+      height: 30px;
+      border: none;
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 15px;
+      color: #1d1d1f;
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+    }
+    
+    .calendar-nav button:hover {
+      background: rgba(0, 0, 0, 0.08);
+      transform: scale(1.05);
+    }
+    
+    .calendar-nav button:active {
+      transform: scale(0.96);
+      background: rgba(0, 0, 0, 0.12);
+    }
+    
+    .today-btn {
+      padding: 6px 14px !important;
+      width: auto !important;
+      font-size: 13px;
+      font-weight: 590;
+      color: #007aff;
+      background: rgba(0, 122, 255, 0.08);
+      letter-spacing: -0.2px;
+    }
+    
+    .today-btn:hover {
+      background: rgba(0, 122, 255, 0.14);
+    }
+    
+    .calendar-title {
+      font-size: 20px;
+      font-weight: 650;
+      color: #1d1d1f;
+      letter-spacing: -0.6px;
+    }
+    
+    .view-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: rgba(0, 0, 0, 0.02);
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+    }
+    
+    .weekday {
+      text-align: center;
+      font-weight: 590;
+      color: #86868b;
+      padding: 10px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+    }
+    
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      background: white;
+      gap: 0;
+    }
+    
+    .calendar-day {
+      min-height: 120px;
+      border-right: 0.5px solid rgba(0, 0, 0, 0.06);
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.06);
+      padding: 10px;
+      background: white;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+    
+    .calendar-day:hover {
+      background: rgba(0, 0, 0, 0.02);
+    }
+    
+    .calendar-day.other-month {
+      background: rgba(0, 0, 0, 0.015);
+    }
+    
+    .calendar-day.other-month .day-number {
+      color: #c7c7cc;
+    }
+    
+    .calendar-day.today {
+      background: rgba(0, 122, 255, 0.04);
+    }
+    
+    .calendar-day.today .day-number {
+      background: #007aff;
+      color: white;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+    
+    .day-number {
+      font-weight: 500;
+      color: #1d1d1f;
+      margin-bottom: 8px;
+      font-size: 14px;
+      letter-spacing: -0.2px;
+    }
+    
+    .appointment-item {
+      padding: 5px 8px;
+      margin: 3px 0;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 2.5px solid;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+      letter-spacing: -0.1px;
+    }
+    
+    .appointment-item:hover {
+      transform: translateX(3px);
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .appointment-item.scheduled {
+      background: rgba(0, 122, 255, 0.12);
+      border-left-color: #007aff;
+      color: #0066cc;
+    }
+    
+    .appointment-item.completed {
+      background: rgba(52, 199, 89, 0.12);
+      border-left-color: #34c759;
+      color: #248a3d;
+    }
+    
+    .appointment-item.cancelled {
+      background: rgba(255, 59, 48, 0.12);
+      border-left-color: #ff3b30;
+      color: #d70015;
+    }
+    
+    .appointment-time {
+      font-weight: 600;
+      display: block;
+      margin-bottom: 2px;
+      letter-spacing: -0.1px;
+    }
+    
+    .appointment-patient {
+      font-size: 10px;
+      opacity: 0.75;
+      font-weight: 500;
+    }
+    
+    .modal { 
+      display: none; 
+      position: fixed; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0, 0, 0, 0.35); 
+      backdrop-filter: blur(20px) saturate(180%);
+      z-index: 1000; 
+      overflow-y: auto; 
+    }
+    
+    .modal.active { 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+    }
+    
+    .modal-content { 
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(40px);
+      border-radius: 16px; 
+      padding: 30px; 
+      max-width: 540px; 
+      width: 95%; 
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+      border: 0.5px solid rgba(255, 255, 255, 0.5);
+      animation: modalSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes modalSlideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px) scale(0.94);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
+    .modal-close { 
+      float: right; 
+      font-size: 22px; 
+      cursor: pointer; 
+      color: #86868b; 
+      line-height: 1;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .modal-close:hover { 
+      background: rgba(0, 0, 0, 0.06);
+      color: #1d1d1f; 
+      transform: scale(1.1);
+    }
+    
+    .modal h2 { 
+      margin-bottom: 24px; 
+      font-size: 20px; 
+      font-weight: 650; 
+      color: #1d1d1f; 
+      clear: both;
+      letter-spacing: -0.5px;
+    }
+    
+    .form-row { 
+      display: grid; 
+      grid-template-columns: 1fr 1fr; 
+      gap: 16px; 
+    }
+    
+    .form-group { 
+      margin-bottom: 16px; 
+    }
+    
+    .form-group label { 
+      font-size: 13px; 
+      margin-bottom: 7px; 
+      display: block; 
+      font-weight: 590; 
+      color: #1d1d1f; 
+      letter-spacing: -0.2px;
+    }
+    
+    .form-group input, 
+    .form-group select, 
+    .form-group textarea { 
+      padding: 11px 14px; 
+      font-size: 14px; 
+      width: 100%; 
+      border: 0.5px solid rgba(0, 0, 0, 0.12); 
+      border-radius: 10px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: rgba(255, 255, 255, 0.8);
+    }
+    
+    .form-group input:focus, 
+    .form-group select:focus, 
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+      background: white;
+    }
+    
+    .patient-result { 
+      padding: 11px 14px; 
+      cursor: pointer; 
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.06); 
+      border-radius: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .patient-result:hover { 
+      background: rgba(0, 0, 0, 0.04); 
+    }
+    
+    .btn {
+      padding: 11px 22px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 590;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      letter-spacing: -0.2px;
+    }
+    
+    .btn-primary {
+      background: #007aff;
+      color: white;
+      box-shadow: 0 3px 10px rgba(0, 122, 255, 0.3);
+    }
+    
+    .btn-primary:hover {
+      background: #0066cc;
+      box-shadow: 0 5px 15px rgba(0, 122, 255, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    .btn-primary:active {
+      transform: translateY(0) scale(0.98);
+    }
+    
+    .btn-secondary {
+      background: rgba(0, 0, 0, 0.05);
+      color: #1d1d1f;
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(0, 0, 0, 0.08);
+    }
+    
+    .btn-success {
+      background: #34c759;
+      color: white;
+      box-shadow: 0 3px 10px rgba(52, 199, 89, 0.3);
+    }
+    
+    .btn-success:hover {
+      background: #28a745;
+      transform: translateY(-1px);
+    }
+    
+    .legend {
+      display: flex;
+      gap: 24px;
+      margin-top: 20px;
+      padding: 16px 24px;
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 12px;
+      border: 0.5px solid rgba(0, 0, 0, 0.06);
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: #1d1d1f;
+      font-weight: 500;
+      letter-spacing: -0.2px;
+    }
+    
+    .legend-color {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border-left: 2.5px solid;
+    }
+    
+    .legend-color.scheduled { 
+      background: rgba(0, 122, 255, 0.15); 
+      border-left-color: #007aff; 
+    }
+    
+    .legend-color.completed { 
+      background: rgba(52, 199, 89, 0.15); 
+      border-left-color: #34c759; 
+    }
+    
+    .legend-color.cancelled { 
+      background: rgba(255, 59, 48, 0.15); 
+      border-left-color: #ff3b30; 
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 5px 12px;
+      border-radius: 14px;
+      font-size: 12px;
+      font-weight: 590;
+      letter-spacing: -0.1px;
+    }
+    
+    .badge-scheduled {
+      background: rgba(0, 122, 255, 0.12);
+      color: #007aff;
+    }
+    
+    .badge-completed {
+      background: rgba(52, 199, 89, 0.12);
+      color: #34c759;
+    }
+    
+    .badge-cancelled {
+      background: rgba(255, 59, 48, 0.12);
+      color: #ff3b30;
+    }
   </style>
 </head>
 <body>
@@ -45,44 +465,51 @@
           <li class="menu-item"><a href="/consultations.html">🩺 Consultations</a></li>
           <li class="menu-item"><a href="/doctors.html">👨‍⚕️ Doctors</a></li>
           <li class="menu-item"><a href="/items.html">💊 Items & Pricing</a></li>
+          <li class="menu-item"><a href="/billing.html">💳 Billing</a></li>
         </ul>
       </aside>
 
       <main class="content-area">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-          <h1>Appointment Scheduling</h1>
-          <button onclick="openAppointmentModal()" class="btn btn-primary">+ New Appointment</button>
-        </div>
-
-        <div class="card" style="margin-bottom: 20px;">
-          <div class="form-row">
-            <div class="form-group">
-              <label>Select Date</label>
-              <input type="date" id="appointmentDate" onchange="loadAppointments()">
-            </div>
-            <div class="form-group">
-              <button onclick="loadAppointments()" class="btn btn-primary">View Schedule</button>
-            </div>
+        <div class="calendar-header">
+          <div class="calendar-nav">
+            <button onclick="previousMonth()" title="Previous Month">◀</button>
+            <button class="today-btn" onclick="goToToday()">Today</button>
+            <button onclick="nextMonth()" title="Next Month">▶</button>
+          </div>
+          <div class="calendar-title" id="calendarTitle">Loading...</div>
+          <div class="view-toggle">
+            <button onclick="openAppointmentModal()" class="btn btn-primary">+ New Appointment</button>
           </div>
         </div>
 
-        <div class="card">
-          <h3>Appointments Schedule</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Time</th>
-                <th>Patient</th>
-                <th>Doctor</th>
-                <th>Purpose</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="appointmentsListBody">
-              <tr><td colspan="6" style="text-align: center; color: #999;">Select a date to view appointments</td></tr>
-            </tbody>
-          </table>
+        <div class="calendar-grid">
+          <div class="calendar-weekdays">
+            <div class="weekday">Sun</div>
+            <div class="weekday">Mon</div>
+            <div class="weekday">Tue</div>
+            <div class="weekday">Wed</div>
+            <div class="weekday">Thu</div>
+            <div class="weekday">Fri</div>
+            <div class="weekday">Sat</div>
+          </div>
+          <div class="calendar-days" id="calendarDays">
+            <!-- Calendar days will be generated here -->
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color scheduled"></div>
+            <span>Scheduled</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color completed"></div>
+            <span>Completed</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color cancelled"></div>
+            <span>Cancelled</span>
+          </div>
         </div>
       </main>
     </div>
@@ -97,9 +524,9 @@
         <div class="form-group">
           <label>Search Patient *</label>
           <input type="text" id="patientSearch" placeholder="Search by ID, name, or contact" oninput="searchPatients()">
-          <div id="patientResults" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; display: none;"></div>
+          <div id="patientResults" style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; margin-top: 5px; display: none;"></div>
           <input type="hidden" name="patientId" id="selectedPatientId" required>
-          <div id="selectedPatientInfo" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 4px; display: none;"></div>
+          <div id="selectedPatientInfo" style="margin-top: 10px; padding: 10px; background: var(--light-blue); border-radius: 8px; display: none;"></div>
         </div>
         
         <div class="form-group">
@@ -112,8 +539,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>Appointment Date *</label>
-            <input type="date" name="appointmentDate" required>
-          </select>
+            <input type="date" name="appointmentDate" id="appointmentDate" required>
           </div>
           <div class="form-group">
             <label>Appointment Time *</label>
@@ -131,7 +557,7 @@
           <textarea name="notes" rows="2" placeholder="Any special instructions"></textarea>
         </div>
         
-        <div style="margin-top: 15px; display: flex; gap: 10px;">
+        <div style="margin-top: 24px; display: flex; gap: 10px;">
           <button type="submit" class="btn btn-primary">Schedule Appointment</button>
           <button type="button" onclick="closeAppointmentModal()" class="btn btn-secondary">Cancel</button>
         </div>
@@ -140,19 +566,142 @@
     </div>
   </div>
 
+  <!-- View Appointment Modal -->
+  <div id="viewAppointmentModal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" onclick="closeViewModal()">&times;</span>
+      <h2>Appointment Details</h2>
+      <div id="appointmentDetails"></div>
+      <div style="margin-top: 24px; display: flex; gap: 10px;">
+        <button onclick="updateAppointmentStatus('Completed')" class="btn btn-success">Mark Completed</button>
+        <button onclick="updateAppointmentStatus('Cancelled')" class="btn" style="background: #dc3545; color: white;">Cancel Appointment</button>
+        <button onclick="closeViewModal()" class="btn btn-secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let currentUser = null;
+    let currentDate = new Date();
+    let allAppointments = [];
+    let selectedAppointmentId = null;
 
     fetch('/api/session').then(r => r.json()).then(user => {
       if (!user) { window.location.href = '/'; return; }
       currentUser = user;
       document.getElementById('userDisplay').textContent = user.name + ' (' + user.role + ')';
-      loadAppointments();
       loadDoctors();
+      renderCalendar();
     });
 
     function handleLogout() {
       fetch('/api/logout', { method: 'POST' }).then(() => window.location.href = '/');
+    }
+
+    function renderCalendar() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      // Update title
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                         'July', 'August', 'September', 'October', 'November', 'December'];
+      document.getElementById('calendarTitle').textContent = monthNames[month] + ' ' + year;
+      
+      // Get first day of month and number of days
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const daysInPrevMonth = new Date(year, month, 0).getDate();
+      
+      const calendarDays = document.getElementById('calendarDays');
+      calendarDays.innerHTML = '';
+      
+      // Load appointments for this month
+      loadMonthAppointments(year, month);
+      
+      // Previous month days
+      for (let i = firstDay - 1; i >= 0; i--) {
+        const day = daysInPrevMonth - i;
+        const dayDiv = createDayElement(day, true, year, month - 1);
+        calendarDays.appendChild(dayDiv);
+      }
+      
+      // Current month days
+      for (let day = 1; day <= daysInMonth; day++) {
+        const isToday = day === new Date().getDate() && 
+                       month === new Date().getMonth() && 
+                       year === new Date().getFullYear();
+        const dayDiv = createDayElement(day, false, year, month, isToday);
+        calendarDays.appendChild(dayDiv);
+      }
+      
+      // Next month days
+      const totalCells = calendarDays.children.length;
+      const remainingCells = 42 - totalCells; // 6 rows x 7 days
+      for (let day = 1; day <= remainingCells; day++) {
+        const dayDiv = createDayElement(day, true, year, month + 1);
+        calendarDays.appendChild(dayDiv);
+      }
+    }
+
+    function createDayElement(day, isOtherMonth, year, month, isToday = false) {
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'calendar-day';
+      if (isOtherMonth) dayDiv.classList.add('other-month');
+      if (isToday) dayDiv.classList.add('today');
+      
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      dayDiv.dataset.date = dateStr;
+      
+      dayDiv.innerHTML = `<div class="day-number">${day}</div>`;
+      dayDiv.onclick = () => openAppointmentModalWithDate(dateStr);
+      
+      return dayDiv;
+    }
+
+    function loadMonthAppointments(year, month) {
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${new Date(year, month + 1, 0).getDate()}`;
+      
+      fetch(`/api/appointments/range?start=${startDate}&end=${endDate}`)
+        .then(r => r.json())
+        .then(appointments => {
+          allAppointments = appointments;
+          displayAppointments();
+        });
+    }
+
+    function displayAppointments() {
+      allAppointments.forEach(apt => {
+        const dayDiv = document.querySelector(`[data-date="${apt.appointmentDate}"]`);
+        if (dayDiv) {
+          const aptDiv = document.createElement('div');
+          aptDiv.className = `appointment-item ${apt.status.toLowerCase()}`;
+          aptDiv.innerHTML = `
+            <span class="appointment-time">${apt.appointmentTime}</span>
+            <span class="appointment-patient">${apt.patientName}</span>
+          `;
+          aptDiv.onclick = (e) => {
+            e.stopPropagation();
+            viewAppointment(apt.appointmentId);
+          };
+          dayDiv.appendChild(aptDiv);
+        }
+      });
+    }
+
+    function previousMonth() {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    function goToToday() {
+      currentDate = new Date();
+      renderCalendar();
     }
 
     function openAppointmentModal() {
@@ -161,6 +710,12 @@
       document.getElementById('selectedPatientInfo').style.display = 'none';
       document.getElementById('patientResults').style.display = 'none';
       document.getElementById('appointmentFormMessage').innerHTML = '';
+      document.getElementById('appointmentDate').valueAsDate = new Date();
+    }
+
+    function openAppointmentModalWithDate(date) {
+      openAppointmentModal();
+      document.getElementById('appointmentDate').value = date;
     }
 
     function closeAppointmentModal() {
@@ -240,7 +795,7 @@
         if (result.success) {
           document.getElementById('appointmentFormMessage').innerHTML = 
             '<div class="success-message">✓ Appointment scheduled! ID: ' + result.appointmentId + '</div>';
-          setTimeout(() => { closeAppointmentModal(); loadAppointments(); }, 1500);
+          setTimeout(() => { closeAppointmentModal(); renderCalendar(); }, 1500);
         } else {
           document.getElementById('appointmentFormMessage').innerHTML = 
             '<div class="error-message">Error: ' + result.message + '</div>';
@@ -248,51 +803,46 @@
       });
     }
 
-    function loadAppointments() {
-      const dateInput = document.getElementById('appointmentDate');
-      const filterDate = dateInput.value || new Date().toISOString().split('T')[0];
-      dateInput.value = filterDate;
+    function viewAppointment(appointmentId) {
+      selectedAppointmentId = appointmentId;
+      const apt = allAppointments.find(a => a.appointmentId === appointmentId);
+      if (!apt) return;
       
-      fetch('/api/appointments/date/' + filterDate)
-        .then(r => r.json())
-        .then(appointments => {
-          const tbody = document.getElementById('appointmentsListBody');
-          if (!appointments || appointments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No appointments for this date</td></tr>';
-            return;
-          }
-          
-          let html = '';
-          appointments.forEach(apt => {
-            const badgeClass = apt.status === 'Completed' ? 'badge-completed' : 
-                              apt.status === 'Scheduled' ? 'badge-scheduled' : 'badge-cancelled';
-            html += '<tr>';
-            html += '<td>' + apt.appointmentTime + '</td>';
-            html += '<td>' + apt.patientName + '</td>';
-            html += '<td>' + apt.doctorName + '</td>';
-            html += '<td>' + apt.purpose + '</td>';
-            html += '<td><span class="badge ' + badgeClass + '">' + apt.status + '</span></td>';
-            html += '<td><button onclick="updateStatus(\'' + apt.appointmentId + '\')" class="btn btn-sm btn-primary">Update</button></td>';
-            html += '</tr>';
-          });
-          tbody.innerHTML = html;
-        });
+      const details = `
+        <div style="line-height: 1.8;">
+          <p><strong>Appointment ID:</strong> ${apt.appointmentId}</p>
+          <p><strong>Date:</strong> ${apt.appointmentDate}</p>
+          <p><strong>Time:</strong> ${apt.appointmentTime}</p>
+          <p><strong>Patient:</strong> ${apt.patientName}</p>
+          <p><strong>Doctor:</strong> ${apt.doctorName}</p>
+          <p><strong>Purpose:</strong> ${apt.purpose}</p>
+          <p><strong>Status:</strong> <span class="badge badge-${apt.status.toLowerCase()}">${apt.status}</span></p>
+          ${apt.notes ? '<p><strong>Notes:</strong> ' + apt.notes + '</p>' : ''}
+        </div>
+      `;
+      
+      document.getElementById('appointmentDetails').innerHTML = details;
+      document.getElementById('viewAppointmentModal').classList.add('active');
     }
 
-    function updateStatus(appointmentId) {
-      const newStatus = prompt('Enter new status (Scheduled/Completed/Cancelled):');
-      if (!newStatus) return;
+    function closeViewModal() {
+      document.getElementById('viewAppointmentModal').classList.remove('active');
+    }
+
+    function updateAppointmentStatus(status) {
+      if (!selectedAppointmentId) return;
       
       fetch('/api/appointments/update-status', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointmentId, status: newStatus })
+        body: JSON.stringify({ appointmentId: selectedAppointmentId, status: status })
       })
       .then(r => r.json())
       .then(result => {
         if (result.success) {
-          alert('Status updated!');
-          loadAppointments();
+          alert('Status updated to: ' + status);
+          closeViewModal();
+          renderCalendar();
         } else {
           alert('Error: ' + result.message);
         }

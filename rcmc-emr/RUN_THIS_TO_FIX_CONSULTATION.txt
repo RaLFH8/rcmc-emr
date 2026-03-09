@@ -1,0 +1,36 @@
+🔧 FIX "START CONSULTATION" BUTTON ERROR
+==========================================
+
+QUICK FIX - 3 STEPS:
+--------------------
+
+1. Open Supabase Dashboard
+   → Go to: https://supabase.com/dashboard
+   → Select your project: imznlhualfuvstfyvdns
+
+2. Go to SQL Editor
+   → Click "SQL Editor" in left sidebar
+   → Click "New Query"
+
+3. Copy & Paste This SQL:
+   → Open file: FIX_APPOINTMENT_STATUS_UPDATE.sql
+   → Copy ALL the contents
+   → Paste into SQL Editor
+   → Click "RUN" button
+
+DONE! ✅
+--------
+After running the SQL:
+- Refresh your EMR app (Ctrl+F5)
+- Go to Appointments → Patient Queue
+- Click "Start Consultation" button
+- It should work now!
+
+WHAT THIS FIXES:
+----------------
+✓ Adds "In Progress" as valid appointment status
+✓ Gives doctors permission to update appointments
+✓ Allows patient queue workflow to function properly
+
+---
+File to run: FIX_APPOINTMENT_STATUS_UPDATE.sql

@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════════════
+  HTTP SMS APP - QUICK START (5 Minutes)
+═══════════════════════════════════════════════════════════
+
+✅ SMS Gateway configured to use HTTP SMS App
+✅ Code already updated in smsGateway.js
+✅ All notification functions ready
+
+═══════════════════════════════════════════════════════════
+  WHAT YOU NEED TO DO NOW:
+═══════════════════════════════════════════════════════════
+
+📱 STEP 1: Install HTTP SMS App (2 minutes)
+   1. Open Play Store on your Android phone
+   2. Search "HTTP SMS"
+   3. Install the app
+   4. Grant SMS permissions when asked
+
+🔧 STEP 2: Configure the App (2 minutes)
+   1. Open HTTP SMS app
+   2. Enable "HTTP Server" (toggle ON)
+   3. Note the IP address (e.g., 192.168.1.100:8080)
+   4. Set a password (optional)
+
+📝 STEP 3: Update .env File (1 minute)
+   1. Open: rcmc-emr/.env
+   2. Find these lines:
+      VITE_HTTP_SMS_URL=http://192.168.1.100:8080
+      VITE_HTTP_SMS_PASSWORD=
+   
+   3. Replace with YOUR phone's IP and password:
+      VITE_HTTP_SMS_URL=http://[YOUR_IP]:[PORT]
+      VITE_HTTP_SMS_PASSWORD=[YOUR_PASSWORD]
+
+🚀 STEP 4: Restart Dev Server
+   1. Stop current server (Ctrl+C)
+   2. Run: npm run dev
+   3. Done!
+
+═══════════════════════════════════════════════════════════
+  IMPORTANT NOTES:
+═══════════════════════════════════════════════════════════
+
+⚠️  Phone and computer MUST be on SAME WiFi network
+⚠️  Keep HTTP SMS app running in background
+⚠️  Make sure you have load on your SIM card
+⚠️  Each SMS costs ₱1 (standard rate)
+
+═══════════════════════════════════════════════════════════
+  TESTING:
+═══════════════════════════════════════════════════════════
+
+After setup:
+1. Login to RCMC EMR
+2. Create a test appointment with your mobile number
+3. Check if you receive SMS confirmation
+4. Check HTTP SMS app logs to see the message
+
+═══════════════════════════════════════════════════════════
+  NEED DETAILED HELP?
+═══════════════════════════════════════════════════════════
+
+📖 Read: HTTP_SMS_SETUP_GUIDE.md
+   - Complete setup instructions
+   - Troubleshooting guide
+   - Best practices
+   - Cost estimates
+
+═══════════════════════════════════════════════════════════
+  WHAT'S ALREADY DONE:
+═══════════════════════════════════════════════════════════
+
+✅ SMS service code updated (smsGateway.js)
+✅ All notification functions implemented:
+   - Appointment confirmations
+   - Appointment reminders
+   - Payment receipts
+   - Lab results notifications
+   - Billing notifications
+   - Prescription ready alerts
+
+✅ Integration with appointment system
+✅ Philippine phone number format (+639XXXXXXXXX)
+✅ Error handling and logging
+
+═══════════════════════════════════════════════════════════
+
+🎉 You're almost done! Just install the app and update .env!
+

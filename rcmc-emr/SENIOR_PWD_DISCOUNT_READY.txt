@@ -1,0 +1,99 @@
+✅ SENIOR CITIZEN & PWD DISCOUNT FEATURE - READY TO USE
+
+=================================================================
+WHAT WAS ADDED:
+=================================================================
+
+1. AUTOMATIC SENIOR CITIZEN DISCOUNT (Age 60+)
+   - System automatically calculates patient age from date_of_birth
+   - If patient is 60 years or older, 20% discount is applied
+   - Shows "Senior Citizen" label in patient dropdown
+
+2. PWD DISCOUNT CHECKBOX
+   - Blue checkbox in payment form for PWD status
+   - When checked, applies 20% discount
+   - Works independently or combined with senior discount
+
+3. DISCOUNT DISPLAY
+   - Shows subtotal before discount
+   - Shows discount line with type and percentage
+   - Shows final total after discount
+   - Discount info saved to database
+
+4. DISCOUNT TYPES
+   - "Senior Citizen" - Age 60+ only
+   - "PWD" - PWD checkbox only
+   - "Senior Citizen & PWD" - Both conditions met (still 20% total)
+
+=================================================================
+DATABASE UPDATE REQUIRED:
+=================================================================
+
+STEP 1: Run SQL Script
+   1. Open Supabase Dashboard
+   2. Go to SQL Editor
+   3. Open file: rcmc-emr/ADD_DISCOUNT_COLUMNS.sql
+   4. Click "Run" to add discount columns to billing table
+
+STEP 2: Test the Feature
+   1. Go to Payments page
+   2. Click "New Payment"
+   3. Select a patient who is 60+ years old
+   4. Add items - discount applies automatically
+   5. OR check the PWD checkbox for 20% discount
+   6. See discount breakdown in the items table
+
+=================================================================
+HOW IT WORKS:
+=================================================================
+
+AUTOMATIC CALCULATION:
+- When you select a patient, system checks their age
+- If age >= 60, discount is automatically applied
+- If PWD checkbox is checked, discount is applied
+- Discount recalculates when:
+  * Patient is changed
+  * PWD checkbox is toggled
+  * Items are added or removed
+
+DISCOUNT FORMULA:
+- Subtotal = Sum of all items
+- Discount Amount = Subtotal × 20%
+- Final Total = Subtotal - Discount Amount
+
+EXAMPLE:
+- Subtotal: ₱1,000.00
+- Discount (Senior Citizen - 20%): -₱200.00
+- Total Amount: ₱800.00
+
+=================================================================
+RECEIPT/PDF UPDATES:
+=================================================================
+
+The discount information is saved to the database and will be
+included in receipts. You may want to update the PDF generation
+to show the discount breakdown (optional enhancement).
+
+=================================================================
+NEXT STEPS:
+=================================================================
+
+1. ✅ Run ADD_DISCOUNT_COLUMNS.sql in Supabase
+2. ✅ Test with a senior citizen patient
+3. ✅ Test with PWD checkbox
+4. ✅ Verify discount appears in payment details
+5. ✅ Check that discount is saved correctly
+
+=================================================================
+NOTES:
+=================================================================
+
+- Only ONE discount type applies (20% maximum)
+- Even if patient is both Senior + PWD, discount is still 20%
+- Discount is calculated on subtotal before payment
+- All discount info is stored in database for records
+- Patient age is calculated in real-time from date_of_birth
+
+=================================================================
+
+Ready to use! Just run the SQL script and start testing.

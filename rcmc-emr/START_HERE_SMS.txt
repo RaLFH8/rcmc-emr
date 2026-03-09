@@ -1,0 +1,164 @@
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║     SMS GATEWAY CONFIGURATION - START HERE               ║
+║                                                           ║
+║     HTTP SMS App Setup for RCMC EMR                      ║
+║     FREE SMS using your Philippine SIM card              ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+
+✅ WHAT'S ALREADY DONE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ SMS service code updated (smsGateway.js)
+✓ HTTP SMS App integration implemented
+✓ All notification functions ready:
+  • Appointment confirmations
+  • Appointment reminders  
+  • Payment receipts
+  • Lab results notifications
+  • Prescription ready alerts
+  • Billing notifications
+
+✓ Environment configuration prepared (.env)
+✓ Complete documentation created
+
+
+📱 WHAT YOU NEED TO DO (10 Minutes):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STEP 1: Install HTTP SMS App (3 minutes)
+────────────────────────────────────────
+1. Open Play Store on your Android phone
+2. Search "HTTP SMS"
+3. Install the app
+4. Open app and grant SMS permissions
+
+
+STEP 2: Configure HTTP SMS App (3 minutes)
+────────────────────────────────────────
+1. In the app, enable "HTTP Server" (toggle ON)
+2. Note the IP address shown (e.g., 192.168.1.100:8080)
+3. Set a password (optional but recommended)
+4. Keep the app running
+
+
+STEP 3: Update .env File (2 minutes)
+────────────────────────────────────────
+1. Open file: rcmc-emr/.env
+2. Find these lines:
+   
+   VITE_HTTP_SMS_URL=http://192.168.1.100:8080
+   VITE_HTTP_SMS_PASSWORD=
+
+3. Replace with YOUR phone's IP and password:
+   
+   VITE_HTTP_SMS_URL=http://[YOUR_PHONE_IP]:[PORT]
+   VITE_HTTP_SMS_PASSWORD=[YOUR_PASSWORD]
+
+4. Save the file
+
+
+STEP 4: Restart Dev Server (1 minute)
+────────────────────────────────────────
+1. Stop current server (press Ctrl+C)
+2. Start again: npm run dev
+
+
+STEP 5: Test SMS (1 minute)
+────────────────────────────────────────
+1. Login to RCMC EMR
+2. Go to Appointments page
+3. Create test appointment with YOUR mobile number
+4. Check if you receive SMS
+5. Verify in HTTP SMS app logs
+
+
+⚠️  IMPORTANT REQUIREMENTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Phone and computer MUST be on SAME WiFi network
+✓ HTTP Server must be enabled in app (toggle ON)
+✓ Phone must have load/credit on SIM card
+✓ SMS permission must be granted to app
+✓ Keep HTTP SMS app running (don't force close)
+
+
+💰 COST ESTIMATE:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Setup Cost: FREE
+Monthly Cost: ~₱300 (300 SMS × ₱1 each)
+
+Much cheaper than cloud SMS services!
+
+
+📖 NEED HELP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quick Start:
+→ Read: SMS_QUICK_START.txt
+
+Complete Guide:
+→ Read: HTTP_SMS_SETUP_GUIDE.md
+
+Having Issues?
+→ Read: SMS_TROUBLESHOOTING.md
+
+Want Other Options?
+→ Read: SMS_GATEWAY_ALTERNATIVES.md
+   (SMS.to, Semaphore, Twilio)
+
+Open All Guides:
+→ Double-click: OPEN_SMS_GUIDES.bat
+
+
+🎯 QUICK TROUBLESHOOTING:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Problem: "Connection refused"
+→ Check: Same WiFi network? HTTP Server enabled?
+
+Problem: "SMS failed"  
+→ Check: SMS permission granted? Have load?
+
+Problem: IP keeps changing
+→ Solution: Set static IP on phone (see guide)
+
+Problem: Phone goes to sleep
+→ Solution: Disable battery optimization for app
+
+
+✨ FEATURES YOU'LL GET:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Automatic appointment confirmations
+✓ Appointment reminders (1 day before)
+✓ Payment receipt notifications
+✓ Lab results ready alerts
+✓ Prescription ready notifications
+✓ Staff billing notifications
+
+
+🚀 READY TO START?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Install HTTP SMS app on your phone NOW
+2. Follow the 5 steps above
+3. Test with your own number
+4. Start using SMS notifications!
+
+
+═══════════════════════════════════════════════════════════
+
+Total Setup Time: ~10 minutes
+Difficulty: Easy
+Cost: FREE (uses regular load)
+
+═══════════════════════════════════════════════════════════
+
+Questions? Read the guides or try SMS.to (cloud alternative)
+
+Good luck! 🎉
+

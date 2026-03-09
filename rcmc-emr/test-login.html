@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Test RCMC-EMR Login</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Test Login</h1>
+  <button onclick="testLogin()">Test Login</button>
+  <div id="result"></div>
+
+  <script>
+    const supabaseUrl = 'https://imznlhualfuvstfyvdns.supabase.co'
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imltem5saHVhbGZ1dnN0Znl2ZG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1NjIyNTYsImV4cCI6MjA4NzEzODI1Nn0.rr451rcZ5iuC34XjkCMjxhHh1exWNS9ytkt0_N-wmtE'
+    
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+      db: { schema: 'emr' }
+    })
+
+    async function testLogin() {
+      const result = document.getElementById('result')
+      result.innerHTML = 'Testing...'
+      
+      try {
+        // Test 1: Try to login
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email: 'admin@rcmc.com',
+          password: 'Admin123!'
+        })
+        
+        if (authError) {
+          result.innerHTML = `<p style="color: red">AUTH ERROR: ${authError.message}</p>`
+          console.error('Auth error:', authError)
+          return
+        }
+        
+        result.innerHTML = `<p style="color: green">✅ Login successful!</p><p>User ID: ${authData.user.id}</p>`
+        console.log('Auth success:', authData)
+        
+        // Test 2: Try to get profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single()
+        
+        if (profileError) {
+          result.innerHTML += `<p style="color: orange">⚠️ Profile error: ${profileError.message}</p>`
+          console.error('Profile error:', profileError)
+          return
+        }
+        
+        result.innerHTML += `<p style="color: green">✅ Profile loaded!</p><pre>${JSON.stringify(profileData, null, 2)}</pre>`
+        console.log('Profile:', profileData)
+        
+      } catch (err) {
+        result.innerHTML = `<p style="color: red">ERROR: ${err.message}</p>`
+        console.error('Error:', err)
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║         🔧 FIX: FAILED TO FETCH ERROR 🔧                  ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+
+❌ PROBLEM:
+   Frontend can't connect to backend API
+   Backend is NOT running!
+
+
+═══════════════════════════════════════════════════════════
+
+✅ SOLUTION - START THE BACKEND:
+
+STEP 1: DOUBLE CLICK THIS FILE
+   → START_BACKEND_NOW.bat
+
+   This will start the backend on port 3003
+
+
+STEP 2: WAIT FOR THIS MESSAGE
+   🚀 RCMC EMR API Server running on http://localhost:3003
+   📁 Google Drive Folder ID: 1JBKtpUdImoQc1LPzyrmVpOsUCYeTky64
+
+
+STEP 3: KEEP THAT TERMINAL OPEN
+   Don't close it! Backend must stay running.
+
+
+STEP 4: TRY UPLOADING AGAIN
+   Go back to browser and upload lab result
+
+
+═══════════════════════════════════════════════════════════
+
+📋 YOU NEED 2 TERMINALS RUNNING:
+
+Terminal 1: BACKEND (port 3003)
+   • Run: START_BACKEND_NOW.bat
+   • Shows: "RCMC EMR API Server running"
+   • Keep open!
+
+Terminal 2: FRONTEND (port 3002)
+   • Run: npm run dev (in rcmc-emr folder)
+   • Shows: "Local: http://localhost:3002"
+   • Keep open!
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 QUICK CHECK:
+
+1. Is backend running?
+   Open: http://localhost:3003/health
+   Should see: {"status":"ok"}
+
+2. Is frontend running?
+   Open: http://localhost:3002
+   Should see: Login page
+
+
+═══════════════════════════════════════════════════════════
+
+🚀 EASY WAY - START BOTH AT ONCE:
+
+DOUBLE CLICK: START_BOTH_SERVERS.bat
+
+This starts both backend and frontend automatically!
+
+
+═══════════════════════════════════════════════════════════
+
+✅ AFTER BACKEND STARTS:
+   Upload will work! 🎉
+
+
+═══════════════════════════════════════════════════════════

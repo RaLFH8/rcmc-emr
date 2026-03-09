@@ -1,0 +1,40 @@
+========================================
+  BACKEND INSTALLED! DO THESE 2 THINGS:
+========================================
+
+✅ DONE: Backend dependencies installed
+
+
+⏳ TODO #1: Add Folder ID
+--------------------------
+1. Open: rcmc-emr/server/.env
+2. Find: GOOGLE_DRIVE_FOLDER_ID=YOUR_FOLDER_ID_HERE
+3. Replace YOUR_FOLDER_ID_HERE with your actual Folder ID
+4. Save file
+
+
+⏳ TODO #2: Add Credentials
+----------------------------
+1. Find your google-credentials.json file (Downloads folder?)
+2. Move it to: rcmc-emr/server/google-credentials.json
+3. Make sure it's in the SERVER folder!
+
+
+THEN: Start Backend
+-------------------
+Double-click: START_BACKEND.bat
+
+
+THEN: Test It
+-------------
+1. Open browser: http://localhost:3003/health
+2. Should see: {"status":"ok"}
+3. Start frontend: npm run dev
+4. Upload a lab result!
+
+
+========================================
+  Just 2 things and you're done!
+========================================
+
+Read: FINAL_SETUP_STEPS.md for details

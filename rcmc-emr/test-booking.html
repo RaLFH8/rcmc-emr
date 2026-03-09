@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Booking Page</title>
+</head>
+<body>
+    <h1>Testing Public Booking</h1>
+    <div id="status">Checking...</div>
+    
+    <script type="module">
+        // Test if we can import the module
+        try {
+            const response = await fetch('http://localhost:3002/src/lib/supabase.js');
+            const text = await response.text();
+            document.getElementById('status').innerHTML = 
+                '<h2>Server is running!</h2>' +
+                '<p>File size: ' + text.length + ' bytes</p>' +
+                '<p><a href="http://localhost:3002/#/book">Go to Public Booking</a></p>' +
+                '<p><a href="http://localhost:3002/">Go to Main App</a></p>';
+        } catch (error) {
+            document.getElementById('status').innerHTML = 
+                '<h2 style="color: red;">Error!</h2>' +
+                '<p>' + error.message + '</p>' +
+                '<p>Make sure the dev server is running on port 3002</p>';
+        }
+    </script>
+</body>
+</html>

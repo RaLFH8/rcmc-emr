@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser Cache Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #e74c3c;
+        }
+        .step {
+            background: #ecf0f1;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #3498db;
+        }
+        .important {
+            background: #fff3cd;
+            border-left-color: #ffc107;
+            font-weight: bold;
+        }
+        code {
+            background: #2c3e50;
+            color: #2ecc71;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2980b9;
+        }
+        .success {
+            background: #27ae60;
+        }
+        .success:hover {
+            background: #229954;
+        }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>🔥 Browser Cache Issue Detected!</h1>
+        
+        <p>Your browser is loading the OLD version of PublicBooking.jsx from cache.</p>
+        <p>The file on disk is CORRECT (has <code>patient_contact</code>), but your browser is using the cached version (has <code>phone</code>).</p>
+        
+        <h2>Fix It Now:</h2>
+        
+        <div class="step important">
+            <strong>Step 1:</strong> Press <code>Ctrl + Shift + R</code> (Windows) or <code>Cmd + Shift + R</code> (Mac)
+        </div>
+        
+        <div class="step">
+            <strong>Step 2:</strong> Or click this button to open the booking page:
+            <br><br>
+            <button onclick="window.open('http://localhost:3001/#/book', '_blank')">
+                Open Booking Page
+            </button>
+        </div>
+        
+        <div class="step">
+            <strong>Step 3:</strong> Once the page opens, press <code>Ctrl + Shift + R</code> to hard refresh
+        </div>
+        
+        <div class="step">
+            <strong>Step 4:</strong> Open DevTools (F12) and check the Console tab
+        </div>
+        
+        <div class="step">
+            <strong>Step 5:</strong> Fill out the form and submit. You should see:
+            <br><br>
+            <code>📤 Submitting booking with data: { patient_contact: "09171234567", ... }</code>
+        </div>
+        
+        <h2>Alternative: Disable Cache for Development</h2>
+        
+        <div class="step">
+            1. Open DevTools (F12)<br>
+            2. Go to <strong>Network</strong> tab<br>
+            3. Check <strong>"Disable cache"</strong> checkbox<br>
+            4. Keep DevTools open while testing
+        </div>
+        
+        <h2>Verify the Fix:</h2>
+        
+        <div class="step success">
+            ✅ Console shows: <code>patient_contact: "09171234567"</code><br>
+            ✅ No error: "Patient contact number is required"<br>
+            ✅ Booking saves successfully
+        </div>
+        
+        <br>
+        <button class="success" onclick="window.open('http://localhost:3001/#/book', '_blank')">
+            🚀 Open Booking Page & Test Now
+        </button>
+    </div>
+</body>
+</html>

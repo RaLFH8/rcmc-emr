@@ -1,0 +1,3 @@
+@echo off
+echo Opening RCMC EMR in your browser...
+start http://localhost:3001

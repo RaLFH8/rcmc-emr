@@ -1,0 +1,73 @@
+========================================
+  WHAT TO PUT IN server/.env FILE
+========================================
+
+COPY THIS ENTIRE CONTENT:
+--------------------------
+
+# Server Configuration
+PORT=3003
+
+# Google Drive Configuration
+GOOGLE_DRIVE_FOLDER_ID=YOUR_FOLDER_ID_HERE
+
+# Path to Google Service Account JSON file
+GOOGLE_SERVICE_ACCOUNT_PATH=./google-credentials.json
+
+# CORS Configuration (your frontend URL)
+FRONTEND_URL=http://localhost:3002
+
+
+THEN REPLACE THIS PART:
+------------------------
+GOOGLE_DRIVE_FOLDER_ID=YOUR_FOLDER_ID_HERE
+                       ^^^^^^^^^^^^^^^^^^^
+                       Replace with your actual Folder ID
+
+
+EXAMPLE (with real Folder ID):
+-------------------------------
+
+# Server Configuration
+PORT=3003
+
+# Google Drive Configuration
+GOOGLE_DRIVE_FOLDER_ID=1a2B3c4D5e6F7g8H9i0J
+
+# Path to Google Service Account JSON file
+GOOGLE_SERVICE_ACCOUNT_PATH=./google-credentials.json
+
+# CORS Configuration (your frontend URL)
+FRONTEND_URL=http://localhost:3002
+
+
+HOW TO GET YOUR FOLDER ID:
+---------------------------
+1. Open Google Drive in browser
+2. Go to your "RCMC Lab Results" folder
+3. Look at the URL in address bar:
+   https://drive.google.com/drive/folders/1a2B3c4D5e6F7g8H9i0J
+                                           ^^^^^^^^^^^^^^^^^^^^
+                                           This is your Folder ID!
+4. Copy just that part (after /folders/)
+5. Paste it in the .env file
+
+
+IMPORTANT NOTES:
+----------------
+- Don't add quotes around the Folder ID
+- Don't add spaces
+- Keep all other lines exactly as shown
+- Save the file as: server/.env (not server/.env.txt)
+
+
+FILE LOCATION:
+--------------
+rcmc-emr/
+└── server/
+    └── .env  ← This file should be here!
+
+
+========================================
+  That's it! Just replace the Folder ID
+========================================

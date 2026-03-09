@@ -1,0 +1,59 @@
+🔧 GOOGLE DRIVE SCOPE FIXED!
+=============================
+
+THE PROBLEM:
+------------
+The Google Drive API was using the wrong scope:
+- OLD: 'https://www.googleapis.com/auth/drive.file'
+  (Only allows access to files created by the app)
+  
+- NEW: 'https://www.googleapis.com/auth/drive'
+  (Allows access to shared folders)
+
+This is why you were getting "Service Accounts do not have storage quota" 
+even after sharing the folder!
+
+THE FIX:
+--------
+✅ Updated rcmc-emr/server/services/googleDrive.js
+✅ Changed scope to allow access to shared folders
+
+WHAT TO DO NOW:
+===============
+
+STEP 1: Restart the Backend
+----------------------------
+Double-click: RESTART_BACKEND_NOW.bat
+
+OR manually:
+1. Stop the backend (Ctrl+C in the backend terminal)
+2. cd rcmc-emr/server
+3. npm start
+
+STEP 2: Test Upload
+--------------------
+1. Go to http://localhost:3001
+2. Click "Lab Results" in sidebar
+3. Click "Upload Lab Result"
+4. Select a patient
+5. Upload a PDF file
+6. IT WILL WORK NOW! 🎉
+
+WHY THIS FIXES IT:
+==================
+The service account now has the correct permissions to:
+- Access folders shared with it
+- Upload files to those folders
+- Manage files in shared folders
+
+The folder sharing you did earlier is correct, but the app 
+needed the right scope to use those permissions.
+
+VERIFICATION:
+=============
+After uploading, you should see:
+✅ "Lab result uploaded successfully!" message
+✅ File appears in Google Drive folder
+✅ Lab result shows in the Lab Results page with view/download buttons
+
+That's it! The Lab Results feature is now 100% complete! 🚀

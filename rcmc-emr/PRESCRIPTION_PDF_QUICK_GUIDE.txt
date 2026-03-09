@@ -1,0 +1,155 @@
+╔══════════════════════════════════════════════════════════════╗
+║         💊 E-PRESCRIPTION PDF EXPORT - QUICK GUIDE           ║
+╚══════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────┐
+│ ✅ FEATURE ADDED                                             │
+├──────────────────────────────────────────────────────────────┤
+│ • Save to PDF button added                                   │
+│ • Print button added                                         │
+│ • Optimized for A5 paper                                     │
+│ • Professional medical format                                │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🎯 HOW TO SAVE AS PDF                                        │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ METHOD 1: From Prescription List                            │
+│   1. Go to Prescriptions page                                │
+│   2. Find the prescription                                   │
+│   3. Click Download icon (blue button)                       │
+│   4. Select "Save as PDF" in print dialog                    │
+│   5. Click Save                                              │
+│                                                              │
+│ METHOD 2: From Edit Modal                                    │
+│   1. Click Edit on prescription                              │
+│   2. Click "Save PDF" button (blue)                          │
+│   3. Select "Save as PDF" in print dialog                    │
+│   4. Click Save                                              │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📄 WHAT'S IN THE PDF                                         │
+├──────────────────────────────────────────────────────────────┤
+│ ✅ Clinic logo and header                                    │
+│ ✅ Clinic address and contact                                │
+│ ✅ Patient information                                       │
+│ ✅ Prescription date                                         │
+│ ✅ Rx symbol                                                 │
+│ ✅ All medications with instructions                         │
+│ ✅ Follow-up date                                            │
+│ ✅ Doctor's credentials                                      │
+│ ✅ "NO REFILL" notice                                        │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🖨️ BUTTONS EXPLAINED                                         │
+├──────────────────────────────────────────────────────────────┤
+│                                                              │
+│ PRINT BUTTON (Printer Icon - Gray)                          │
+│   • Sends to printer                                         │
+│   • For physical copies                                      │
+│   • Same format as PDF                                       │
+│                                                              │
+│ SAVE PDF BUTTON (Download Icon - Blue)                      │
+│   • Opens print dialog                                       │
+│   • Select "Save as PDF"                                     │
+│   • Creates digital copy                                     │
+│   • Can email or store                                       │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 💡 TIPS                                                      │
+├──────────────────────────────────────────────────────────────┤
+│ • Paper Size: A5 (prescription pad size)                     │
+│ • Margins: 10mm (already set)                                │
+│ • Scale: 100% (default)                                      │
+│ • Color: Works in color or B&W                               │
+│                                                              │
+│ File Naming:                                                 │
+│   Rx_PatientName_Date.pdf                                    │
+│   Example: Rx_JohnDoe_2024-02-22.pdf                         │
+│                                                              │
+│ Keyboard Shortcut:                                           │
+│   Ctrl+P (Windows) or Cmd+P (Mac)                            │
+│   Then select "Save as PDF"                                  │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🌐 BROWSER SUPPORT                                           │
+├──────────────────────────────────────────────────────────────┤
+│ ✅ Chrome/Edge - "Save as PDF"                               │
+│ ✅ Firefox - "Save to PDF"                                   │
+│ ✅ Safari - "Save as PDF"                                    │
+│ ✅ Mobile browsers (iOS/Android)                             │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 📱 MOBILE USAGE                                              │
+├──────────────────────────────────────────────────────────────┤
+│ 1. Tap Save PDF button                                       │
+│ 2. Select "Save as PDF"                                      │
+│ 3. Choose location (Files, Drive, etc.)                      │
+│ 4. Save                                                      │
+│                                                              │
+│ Can also:                                                    │
+│ • Share via email                                            │
+│ • Share via messaging apps                                   │
+│ • Save to cloud storage                                      │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ ✅ BENEFITS                                                  │
+├──────────────────────────────────────────────────────────────┤
+│ For Clinic:                                                  │
+│ • Digital record keeping                                     │
+│ • Easy to reprint                                            │
+│ • Professional image                                         │
+│ • No paper waste                                             │
+│                                                              │
+│ For Patients:                                                │
+│ • Can't lose prescription                                    │
+│ • Easy to share with pharmacy                                │
+│ • Keep digital copy                                          │
+│ • Clear and readable                                         │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🔒 PRIVACY & SECURITY                                        │
+├──────────────────────────────────────────────────────────────┤
+│ ⚠️ PDFs contain patient information                          │
+│                                                              │
+│ Best Practices:                                              │
+│ • Store securely                                             │
+│ • Use secure email if sending                                │
+│ • Follow privacy guidelines                                  │
+│ • Password protect if needed                                 │
+│ • Delete old copies when not needed                          │
+└──────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────┐
+│ 🆘 TROUBLESHOOTING                                           │
+├──────────────────────────────────────────────────────────────┤
+│ PDF looks wrong:                                             │
+│ • Check paper size is A5                                     │
+│ • Check margins are 10mm                                     │
+│ • Check scale is 100%                                        │
+│                                                              │
+│ Can't find "Save as PDF":                                    │
+│ • Look in Destination dropdown                               │
+│ • Try different browser                                      │
+│ • Update browser                                             │
+│                                                              │
+│ Logo not showing:                                            │
+│ • Check logo file exists                                     │
+│ • Refresh page                                               │
+│ • Clear browser cache                                        │
+└──────────────────────────────────────────────────────────────┘
+
+╔══════════════════════════════════════════════════════════════╗
+║  🎉 READY TO USE!                                            ║
+║  Click the Download icon to save prescriptions as PDF!       ║
+╚══════════════════════════════════════════════════════════════╝

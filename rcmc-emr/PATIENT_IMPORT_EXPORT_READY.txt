@@ -1,0 +1,125 @@
+✅ PATIENT IMPORT/EXPORT FEATURE - READY TO USE
+
+=================================================================
+WHAT WAS ADDED:
+=================================================================
+
+1. EXPORT PATIENTS TO CSV (Admin Only)
+   - Blue "Export" button in Patients page header
+   - Downloads all patient data as CSV file
+   - Includes all patient information and vital signs
+   - File named: patients_export_YYYY-MM-DD.csv
+
+2. IMPORT PATIENTS FROM CSV (Admin Only)
+   - Green "Import" button in Patients page header
+   - Upload CSV file to bulk import patients
+   - Validates data before importing
+   - Shows success/error count after import
+
+3. ADMIN ROLE CHECK
+   - Only users with "Admin" role can see buttons
+   - Doctors and other staff cannot export/import
+   - Secure and role-based access control
+
+=================================================================
+HOW TO USE - EXPORT:
+=================================================================
+
+STEP 1: Login as Admin
+   - Use admin@rcmc.com account
+
+STEP 2: Go to Patients Page
+   - Click "Patients" in sidebar
+
+STEP 3: Click Export Button
+   - Blue "Export" button in top-right
+   - CSV file downloads automatically
+   - Contains all patient records
+
+EXPORTED DATA INCLUDES:
+✓ Patient Number
+✓ Name (First & Last)
+✓ Date of Birth & Age
+✓ Gender
+✓ Contact Information (Phone, Email, Address)
+✓ Blood Type
+✓ Allergies
+✓ Medical History
+✓ Emergency Contact Details
+✓ Vital Signs (Height, Weight, BP, Temp, etc.)
+
+=================================================================
+HOW TO USE - IMPORT:
+=================================================================
+
+STEP 1: Prepare CSV File
+   - Use the exported CSV as template
+   - Or create new CSV with same format
+   - See sample template: patient_import_template.csv
+
+STEP 2: Click Import Button
+   - Green "Import" button in top-right
+   - Select your CSV file
+   - System validates and imports data
+
+STEP 3: Review Results
+   - Alert shows success/error count
+   - Successfully imported patients appear in list
+   - Failed rows are skipped (check format)
+
+CSV FORMAT REQUIREMENTS:
+- First row must be headers (will be skipped)
+- Required fields: First Name, Last Name
+- Date format: YYYY-MM-DD
+- Patient Number is auto-generated (skip this column)
+- Age is auto-calculated (skip this column)
+
+=================================================================
+SAMPLE CSV FORMAT:
+=================================================================
+
+Patient Number,First Name,Last Name,Date of Birth,Age,Gender,Contact Number,Email,Address,Blood Type,Allergies,Medical History,Emergency Contact Name,Emergency Contact Number,Height (cm),Weight (kg),Blood Pressure,Temperature (°C),Heart Rate (bpm),Respiratory Rate,Oxygen Saturation (%)
+,Juan,Dela Cruz,1980-05-15,,Male,09171234567,juan@email.com,Manila,O+,None,Hypertension,Maria Dela Cruz,09187654321,170,75,120/80,36.5,72,16,98
+,Maria,Santos,1995-08-20,,Female,09281234567,maria@email.com,Quezon City,A+,Penicillin,None,Jose Santos,09287654321,160,60,110/70,36.6,68,14,99
+
+=================================================================
+IMPORTANT NOTES:
+=================================================================
+
+✓ Only Admin users can see Export/Import buttons
+✓ Export button is disabled if no patients exist
+✓ Import validates data before adding to database
+✓ Duplicate patient numbers are handled automatically
+✓ Failed imports don't affect existing data
+✓ CSV must be UTF-8 encoded
+✓ Special characters in fields are properly escaped
+
+=================================================================
+SECURITY:
+=================================================================
+
+- Role-based access control (Admin only)
+- Data validation on import
+- Error handling for invalid data
+- No data loss on failed imports
+- Audit trail maintained in database
+
+=================================================================
+TROUBLESHOOTING:
+=================================================================
+
+If Export button doesn't appear:
+1. Make sure you're logged in as Admin
+2. Check user role in database (should be "Admin")
+3. Refresh the page (Ctrl+F5)
+
+If Import fails:
+1. Check CSV format matches template
+2. Ensure required fields (First Name, Last Name) are filled
+3. Verify date format is YYYY-MM-DD
+4. Check for special characters or encoding issues
+5. Try exporting first to see correct format
+
+=================================================================
+
+Feature is ready to use! Login as Admin to see the buttons.

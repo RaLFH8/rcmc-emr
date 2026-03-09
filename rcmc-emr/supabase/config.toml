@@ -1,0 +1,4 @@
+# Supabase Configuration
+
+[functions.backup-scheduler]
+verify_jwt = false  # Allow service role access without JWT verification

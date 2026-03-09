@@ -1,0 +1,64 @@
+🔧 FIX: "relation notifications does not exist"
+===================================================
+
+PROBLEM:
+--------
+You tried to insert data before creating the table.
+
+SOLUTION - 2 SIMPLE STEPS:
+---------------------------
+
+STEP 1: CREATE THE TABLE
+-------------------------
+1. Open Supabase SQL Editor
+2. Open file: STEP1_CREATE_TABLE_ONLY.sql
+3. Copy ALL content
+4. Paste in SQL Editor
+5. Click RUN
+6. Wait for results
+7. You should see 10 rows showing table columns ✅
+
+STEP 2: INSERT TEST DATA
+-------------------------
+1. In same SQL Editor, clear content
+2. Open file: STEP2_INSERT_TEST_DATA.sql
+3. Copy ALL content
+4. Paste in SQL Editor
+5. First run the SELECT query to get your user ID
+6. Copy the ID
+7. Replace 'YOUR_USER_ID_HERE' with your actual ID
+8. Run the INSERT query
+9. Run the final SELECT to verify ✅
+
+EXAMPLE:
+--------
+If your user ID is: d52b2be4-6a2c-4523-baa8-eabe6c22850d
+
+Change this:
+  'YOUR_USER_ID_HERE',
+
+To this:
+  'd52b2be4-6a2c-4523-baa8-eabe6c22850d',
+
+THEN RESTART SERVER:
+--------------------
+Terminal:
+  Ctrl+C
+  npm run dev
+
+Browser:
+  http://localhost:3002
+  Login and check bell icon!
+
+DONE! 🎉
+========
+
+You should now see:
+✨ Pulsing red badge
+🔔 Wiggle animation
+🎨 Beautiful gradient design
+💫 Professional notifications
+
+===================================================
+🚀 Follow these 2 steps and it will work!
+===================================================

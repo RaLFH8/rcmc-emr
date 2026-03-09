@@ -1,0 +1,40 @@
+🔧 MANUAL SERVER START REQUIRED
+
+PowerShell execution policy is blocking npm commands.
+
+OPTION 1 - Use Command Prompt (EASIEST):
+1. Open Command Prompt (cmd.exe) - NOT PowerShell
+2. Navigate to: cd C:\Users\ralfh\Desktop\Kiro\rcmc-emr
+3. Run: npm run dev
+4. Wait for server to start
+5. Go to: http://localhost:3001/book
+
+OPTION 2 - Double-click the batch file:
+1. Find and double-click: START_SERVER_FRESH.bat
+2. Wait for server to start
+3. Go to: http://localhost:3001/book
+
+OPTION 3 - Fix PowerShell execution policy:
+1. Open PowerShell as Administrator
+2. Run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+3. Type 'Y' to confirm
+4. Then run: npm run dev
+
+WHAT TO TEST:
+✅ Go to http://localhost:3001/book
+✅ Complete Step 1 (doctor, date, time)
+✅ Click "Continue to Patient Information"
+✅ Look for BLUE INFO BOX in Step 2
+
+THE INFO MESSAGE:
+- Blue background box
+- Info icon (ℹ️) on the left
+- Text: "Returning patient? We'll find your records automatically using your phone or email. This helps us provide better care by keeping your medical history in one place."
+
+ALL CODE CHANGES ARE COMPLETE:
+✅ Info icon imported
+✅ Blue info box added to Step 2
+✅ Syntax error in supabase.js fixed
+✅ No diagnostics errors
+
+Just need to start the server manually!

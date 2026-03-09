@@ -1,0 +1,62 @@
+🔍 COMPLETE SCHEMA DIAGNOSTIC
+==============================
+
+This will show you EVERY schema error in your database.
+
+HOW TO RUN:
+-----------
+1. Open Supabase Dashboard: https://imznlhualfuvstfyvdns.supabase.co
+2. Go to SQL Editor
+3. Open file: rcmc-emr/DIAGNOSE_ALL_SCHEMA_ERRORS.sql
+4. Copy ALL content
+5. Paste in SQL Editor
+6. Click "Run"
+
+WHAT IT CHECKS:
+---------------
+✓ Which schemas exist (public, emr, etc.)
+✓ Where each table is located
+✓ Duplicate tables across schemas
+✓ Column structure in each table
+✓ Row Level Security (RLS) status
+✓ RLS policies on each table
+✓ Table permissions for each role
+✓ Data counts in each schema
+✓ Foreign key constraints
+✓ Missing tables
+✓ Column mismatches (billing, inventory)
+✓ Summary with recommendations
+
+WHAT YOU'LL SEE:
+----------------
+The script will output 12 sections showing:
+
+1. AVAILABLE SCHEMAS - Lists all schemas in your database
+2. TABLE LOCATIONS - Shows which schema each table is in (✅ or ❌)
+3. DUPLICATE TABLES - Identifies tables in multiple schemas
+4. COLUMN STRUCTURE - Lists all columns with data types
+5. RLS STATUS - Shows if RLS is enabled on each table
+6. RLS POLICIES - Lists all security policies
+7. TABLE PERMISSIONS - Shows who can access what
+8. DATA COUNTS - Number of rows in each table
+9. FOREIGN KEY CONSTRAINTS - Shows table relationships
+10. MISSING TABLES - Identifies tables that should exist but don't
+11. CRITICAL COLUMN CHECKS - Verifies billing & inventory columns
+12. DIAGNOSTIC SUMMARY - Final report with recommendations
+
+COMMON ISSUES IT WILL FIND:
+----------------------------
+❌ Tables in 'emr' schema instead of 'public'
+❌ Duplicate tables in multiple schemas
+❌ Missing RLS policies
+❌ Wrong column names (invoice_number, name, stock, price)
+❌ Missing tables
+❌ Incorrect permissions
+
+AFTER RUNNING:
+--------------
+The diagnostic will tell you exactly which fix script to run:
+- FIX_SCHEMA_ISSUE.sql (if tables are in wrong schema)
+- ULTIMATE_FIX_EVERYTHING.sql (if tables are missing)
+
+This is your complete health check for the database!

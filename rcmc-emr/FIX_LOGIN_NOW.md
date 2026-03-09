@@ -1,65 +1,68 @@
-# FIX LOGIN - FOLLOW THESE STEPS EXACTLY
+# FIX LOGIN - STEP BY STEP
 
-## THE PROBLEM
-Supabase API cannot access tables in `emr` schema. It only works with `public` schema.
+## Problem
+Cannot login after clearing data. The admin user needs to be created in both Supabase Authentication and the emr.user_profiles table.
 
-## THE SOLUTION
-Move `user_profiles` table from `emr` schema to `public` schema.
+## Solution Steps
 
----
+### Step 1: Create Admin User in Supabase Authentication
+1. Go to your Supabase Dashboard: https://imznlhualfuvstfyvdns.supabase.co
+2. Click on "Authentication" in the left sidebar
+3. Click on "Users" tab
+4. Click "Add User" button
+5. Enter:
+   - Email: `admin@rcmc.com`
+   - Password: `Admin123!`
+   - Auto Confirm User: YES (check this box)
+6. Click "Create User"
+7. **COPY THE USER ID** - you'll need it for Step 2
 
-## STEP 1: Run SQL in Supabase
+### Step 2: Create User Profile in emr.user_profiles
+1. Go to "SQL Editor" in Supabase Dashboard
+2. Run this SQL (replace YOUR-USER-ID with the ID from Step 1):
 
-1. Go to https://supabase.com/dashboard
-2. Select your project: **imznlhualfuvstfyvdns**
-3. Click **SQL Editor** in left sidebar
-4. Click **New Query**
-5. Copy and paste the ENTIRE content from `move-to-public-schema.sql`
-6. Click **RUN** button
-7. You should see: "Success. No rows returned"
-8. Verify by running: `SELECT * FROM public.user_profiles;`
-9. You should see 1 row with admin@rcmc.com
-
----
-
-## STEP 2: Restart Development Server
-
-```cmd
-cd C:\Users\ralfh\Desktop\Kiro\rcmc-emr
-npm run dev
+```sql
+-- Insert admin profile into emr.user_profiles
+INSERT INTO emr.user_profiles (
+  id,
+  email,
+  full_name,
+  role,
+  status,
+  created_at,
+  updated_at
+) VALUES (
+  'YOUR-USER-ID'::uuid,  -- Replace with actual user ID from Step 1
+  'admin@rcmc.com',
+  'System Administrator',
+  'admin',
+  'Active',
+  NOW(),
+  NOW()
+);
 ```
 
----
+### Step 3: Verify the Setup
+Run this query to verify:
 
-## STEP 3: Test Login
+```sql
+-- Check if profile exists
+SELECT * FROM emr.user_profiles WHERE email = 'admin@rcmc.com';
+```
 
-1. Open browser: http://localhost:3001
-2. Login with:
+### Step 4: Clear Browser Cache and Login
+1. In your browser, press `Ctrl + Shift + Delete`
+2. Clear "Cached images and files"
+3. Close all browser tabs
+4. Open http://localhost:5173
+5. Login with:
    - Email: `admin@rcmc.com`
-   - Password: `admin123`
-3. You should now successfully log in!
+   - Password: `Admin123!`
 
----
+## What Was Fixed
+1. Updated `AuthContext.jsx` to use emr schema (comment updated)
+2. The `supabase.js` already has schema config: `db: { schema: 'emr' }`
+3. This ensures all queries go to the emr schema by default
 
-## WHAT WAS FIXED
-
-✅ AuthContext.jsx - Now queries from `user_profiles` (public schema)
-✅ UserManagement.jsx - Now queries from `user_profiles` (public schema)
-✅ move-to-public-schema.sql - Creates table in public schema with all data
-
----
-
-## IF IT STILL DOESN'T WORK
-
-Check browser console (F12) for errors and send me the error message.
-
----
-
-## AFTER LOGIN WORKS
-
-You can then:
-1. Create new doctor accounts from User Management page
-2. Create receptionist accounts
-3. Each user will have their own login credentials
-4. Push all changes to GitHub
-
+## If Still Having Issues
+Check browser console (F12) for error messages and share them.

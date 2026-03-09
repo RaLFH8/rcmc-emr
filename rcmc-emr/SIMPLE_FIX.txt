@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════
+  FIX YOUR CLOUDFLARE EMR IN 3 STEPS (2 MINUTES)
+═══════════════════════════════════════════════════════════
+
+STEP 1: Open Supabase SQL Editor
+→ Go to: https://supabase.com/dashboard/project/imznlhualfuvstfyvdns
+→ Click "SQL Editor" (left sidebar)
+→ Click "New Query"
+
+STEP 2: Copy & Run the Fix Script
+→ Open file: FIX_ALL_ISSUES.sql
+→ Copy ALL content (Ctrl+A, Ctrl+C)
+→ Paste in Supabase (Ctrl+V)
+→ Click "Run" button (or F5)
+→ Wait 5-10 seconds
+
+STEP 3: Test on Cloudflare
+→ Go to your Cloudflare EMR site
+→ Add a doctor
+→ Add a patient
+→ Refresh page
+→ ✅ Data should still be there!
+
+═══════════════════════════════════════════════════════════
+  WHAT THIS FIXES
+═══════════════════════════════════════════════════════════
+
+✅ "Could not find the 'consultation_fee' column" - FIXED
+✅ "Could not find the 'heart_rate' column" - FIXED
+✅ "invalid input syntax for type numeric" - FIXED
+✅ Data disappears after refresh - FIXED
+✅ All 14 missing columns - ADDED
+✅ RLS blocking saves - DISABLED
+
+═══════════════════════════════════════════════════════════
+  THAT'S IT!
+═══════════════════════════════════════════════════════════
+
+After running the script, your Cloudflare EMR will work perfectly!
+
+Need help? Check CLOUDFLARE_FIX_SUMMARY.md for details.

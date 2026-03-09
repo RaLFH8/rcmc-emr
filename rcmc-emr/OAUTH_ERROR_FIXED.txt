@@ -1,0 +1,78 @@
+========================================
+✅ HOW TO FIX: Error 403 access_denied
+========================================
+
+WHAT'S HAPPENING:
+=================
+Your OAuth app is in "Testing" mode.
+You need to add your email as a test user.
+
+This is NORMAL and takes 1 minute to fix!
+
+QUICK FIX:
+==========
+
+Double-click: ADD_TEST_USER_NOW.bat
+
+This will:
+1. Open Google Cloud Console
+2. Show you where to add your email
+3. Guide you through the process
+
+OR DO IT MANUALLY:
+==================
+
+1. Go to: https://console.cloud.google.com/apis/credentials/consent?project=rcmc-lab-results
+
+2. Scroll to "Test users" section
+
+3. Click "+ ADD USERS"
+
+4. Enter: rcmcrecords@gmail.com
+
+5. Click "SAVE"
+
+6. Done!
+
+AFTER ADDING YOUR EMAIL:
+=========================
+
+1. Go back to http://localhost:3001
+2. Click "Lab Results"
+3. Click "Upload Lab Result"
+4. Google will now show the permission popup
+5. Click "Allow"
+6. Upload works! 🎉
+
+WHY THIS HAPPENS:
+=================
+Google requires apps in "Testing" mode to have
+an approved list of test users. This is a security
+feature to prevent unauthorized access during
+development.
+
+Once you add your email, you can use the app
+without any restrictions!
+
+ALTERNATIVE (OPTIONAL):
+=======================
+If you want ANYONE to use it without adding them:
+
+1. Go to OAuth consent screen
+2. Click "PUBLISH APP"
+3. Click "CONFIRM"
+
+Note: You'll see "unverified app" warning, but
+it's safe for personal/internal use.
+
+========================================
+READY TO FIX!
+========================================
+
+Double-click: ADD_TEST_USER_NOW.bat
+
+Or visit: https://console.cloud.google.com/apis/credentials/consent?project=rcmc-lab-results
+
+Add your email and you're done! 🚀
+
+========================================

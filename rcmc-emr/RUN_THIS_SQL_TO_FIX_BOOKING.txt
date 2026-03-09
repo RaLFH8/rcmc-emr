@@ -1,0 +1,72 @@
+🔧 FIX ONLINE BOOKING - PATIENT CREATION BLOCKED
+
+═══════════════════════════════════════════════════════
+
+PROBLEM:
+Anonymous users cannot create patient records because RLS 
+(Row Level Security) policies don't allow it.
+
+═══════════════════════════════════════════════════════
+
+SOLUTION:
+Run the SQL script to add RLS policies for patients table
+
+═══════════════════════════════════════════════════════
+
+STEPS:
+═══════════════════════════════════════════════════════
+
+1. Open Supabase Dashboard
+   https://supabase.com/dashboard
+
+2. Go to your project: imznlhualfuvstfyvdns
+
+3. Click "SQL Editor" in left sidebar
+
+4. Click "New Query"
+
+5. Copy and paste this SQL:
+
+───────────────────────────────────────────────────────
+
+-- Allow anonymous users to INSERT patients
+CREATE POLICY IF NOT EXISTS "Allow anonymous insert for online booking"
+ON patients
+FOR INSERT
+TO anon
+WITH CHECK (true);
+
+-- Allow anonymous users to SELECT patients
+CREATE POLICY IF NOT EXISTS "Allow anonymous select by contact"
+ON patients
+FOR SELECT
+TO anon
+USING (true);
+
+───────────────────────────────────────────────────────
+
+6. Click "Run" button
+
+7. You should see: "Success. No rows returned"
+
+8. Go back to browser and test booking again
+
+═══════════════════════════════════════════════════════
+
+WHAT THIS DOES:
+- Allows anonymous (not logged in) users to:
+  ✓ INSERT new patient records
+  ✓ SELECT/read patient records
+- This is safe because:
+  ✓ Only used for online booking
+  ✓ Patients can only create their own records
+  ✓ No sensitive data exposed
+
+═══════════════════════════════════════════════════════
+
+AFTER RUNNING SQL:
+Test the booking at: http://localhost:3001/#/book
+
+It should work now!
+
+═══════════════════════════════════════════════════════

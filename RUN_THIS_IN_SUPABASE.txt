@@ -1,0 +1,26 @@
+============================================
+QUICK DATABASE BACKUP - COPY THIS TO SUPABASE
+============================================
+
+1. Go to: https://supabase.com/dashboard
+2. Select your project
+3. Click: SQL Editor
+4. Copy the contents of: BACKUP_DATABASE_NOW.sql
+5. Paste and click "Run"
+
+OR
+
+Just open BACKUP_DATABASE_NOW.sql and follow the instructions there.
+
+This will create a backup schema in your database.
+Takes about 30 seconds.
+
+============================================
+AFTER BACKUP IS COMPLETE
+============================================
+
+You're ready to proceed with:
+1. Security updates
+2. Online appointment system
+
+The backup will let you rollback if anything goes wrong.

@@ -1,0 +1,119 @@
+╔════════════════════════════════════════════════════════════╗
+║                                                            ║
+║           🔍 DEBUG: FAILED TO FETCH ERROR 🔍              ║
+║                                                            ║
+╚════════════════════════════════════════════════════════════╝
+
+
+❌ ERROR: "Failed to fetch"
+   This means frontend can't reach backend API
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 STEP 1: TEST BACKEND CONNECTION
+
+OPEN THIS FILE IN BROWSER:
+   → TEST_BACKEND_CONNECTION.html
+
+This will automatically test:
+   ✓ Is backend running?
+   ✓ Can frontend reach it?
+   ✓ Are endpoints working?
+
+It will show you EXACTLY what's wrong!
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 STEP 2: VERIFY BACKEND IS RUNNING
+
+Check your terminals:
+
+Do you see this message?
+   🚀 RCMC EMR API Server running on http://localhost:3003
+   📁 Google Drive Folder ID: 1JBKtpUdImoQc1LPzyrmVpOsUCYeTky64
+
+✅ YES → Backend is running, go to Step 3
+❌ NO  → Backend is NOT running, go to Step 4
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 STEP 3: TEST BACKEND MANUALLY
+
+Open in browser: http://localhost:3003/health
+
+Should see:
+   {"status":"ok","message":"RCMC EMR API Server is running"}
+
+✅ YES → Backend works! Problem is in frontend config
+❌ NO  → Backend not accessible
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 STEP 4: START BACKEND
+
+DOUBLE CLICK: START_BOTH_SERVERS.bat
+
+This opens 2 windows:
+   • Window 1: Backend (port 3003)
+   • Window 2: Frontend (port 3002)
+
+Wait 10 seconds, then try upload again!
+
+
+═══════════════════════════════════════════════════════════
+
+🎯 STEP 5: CHECK FRONTEND .ENV
+
+Open: rcmc-emr/.env
+
+Should have this line:
+   VITE_API_URL=http://localhost:3003
+
+✅ YES → Config is correct
+❌ NO  → Add that line and restart frontend
+
+
+═══════════════════════════════════════════════════════════
+
+🐛 COMMON ISSUES:
+
+1. Backend not running
+   → Double click START_BOTH_SERVERS.bat
+
+2. Wrong port
+   → Backend must be on 3003
+   → Frontend must be on 3002
+
+3. Firewall blocking
+   → Allow Node.js in Windows Firewall
+
+4. Another app using port 3003
+   → Close other apps
+   → Or change port in server/.env
+
+
+═══════════════════════════════════════════════════════════
+
+📋 CHECKLIST:
+
+□ Backend terminal shows "Server running on 3003"
+□ http://localhost:3003/health shows {"status":"ok"}
+□ Frontend .env has VITE_API_URL=http://localhost:3003
+□ Both terminals are open and running
+□ No firewall blocking ports
+
+
+═══════════════════════════════════════════════════════════
+
+✅ NEXT STEP:
+
+1. Open TEST_BACKEND_CONNECTION.html in browser
+2. See what the test says
+3. Share the result with me!
+
+
+═══════════════════════════════════════════════════════════

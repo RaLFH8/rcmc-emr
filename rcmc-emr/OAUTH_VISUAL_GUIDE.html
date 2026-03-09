@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google OAuth Setup - RCMC EMR</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #0d9488 0%, #14b8a6 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 18px;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 40px;
+        }
+        .step {
+            background: #f8fafc;
+            border-left: 4px solid #0d9488;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 8px;
+        }
+        .step-number {
+            display: inline-block;
+            background: #0d9488;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 32px;
+            font-weight: bold;
+            margin-right: 12px;
+        }
+        .step h2 {
+            display: inline-block;
+            color: #1e293b;
+            font-size: 20px;
+            margin-bottom: 16px;
+        }
+        .step-content {
+            margin-left: 44px;
+            color: #475569;
+            line-height: 1.6;
+        }
+        .step-content ul {
+            margin: 12px 0;
+            padding-left: 20px;
+        }
+        .step-content li {
+            margin: 8px 0;
+        }
+        .button {
+            display: inline-block;
+            background: #0d9488;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin: 8px 8px 8px 0;
+            transition: all 0.3s;
+        }
+        .button:hover {
+            background: #0f766e;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.4);
+        }
+        .button-secondary {
+            background: #64748b;
+        }
+        .button-secondary:hover {
+            background: #475569;
+        }
+        .code {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 16px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 16px;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .footer {
+            background: #f8fafc;
+            padding: 24px 40px;
+            text-align: center;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+        }
+        .checklist {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .checklist-item {
+            padding: 8px;
+            margin: 4px 0;
+        }
+        .checklist-item input {
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Google OAuth Setup</h1>
+            <p>Lab Results Upload for RCMC EMR</p>
+        </div>
+
+        <div class="content">
+            <div class="info">
+                <strong>⏱️ Time Required:</strong> 5-10 minutes<br>
+                <strong>💰 Cost:</strong> Free (uses your 15GB Google Drive storage)<br>
+                <strong>🔧 Difficulty:</strong> Easy - just follow the steps below
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                <h2>Open Google Cloud Console</h2>
+                <div class="step-content">
+                    <p>Click the button below to open Google Cloud Console:</p>
+                    <a href="https://console.cloud.google.com/apis/credentials?project=rcmc-lab-results" target="_blank" class="button">
+                        Open Google Cloud Console
+                    </a>
+                    <p style="margin-top: 12px;">Make sure you're logged in with: <strong>rcmcrecords@gmail.com</strong></p>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <h2>Create OAuth Client ID</h2>
+                <div class="step-content">
+                    <p>In Google Cloud Console:</p>
+                    <ul>
+                        <li>Click <strong>"+ CREATE CREDENTIALS"</strong> at the top</li>
+                        <li>Select <strong>"OAuth client ID"</strong></li>
+                    </ul>
+                    
+                    <div class="warning">
+                        <strong>⚠️ If prompted to configure consent screen:</strong>
+                        <ul style="margin-top: 8px;">
+                            <li>Click "CONFIGURE CONSENT SCREEN"</li>
+                            <li>Select "External" → Click "CREATE"</li>
+                            <li>App name: <code>RCMC EMR</code></li>
+                            <li>User support email: <code>rcmcrecords@gmail.com</code></li>
+                            <li>Developer contact: <code>rcmcrecords@gmail.com</code></li>
+                            <li>Click "SAVE AND CONTINUE"</li>
+                            <li>On Scopes page, add: <code>https://www.googleapis.com/auth/drive.file</code></li>
+                            <li>On Test users page, add: <code>rcmcrecords@gmail.com</code></li>
+                            <li>Click "SAVE AND CONTINUE" until done</li>
+                            <li>Go back and create OAuth Client ID again</li>
+                        </ul>
+                    </div>
+
+                    <p><strong>Configure OAuth Client ID:</strong></p>
+                    <ul>
+                        <li>Application type: <strong>Web application</strong></li>
+                        <li>Name: <code>RCMC EMR Web Client</code></li>
+                        <li>Authorized JavaScript origins:
+                            <div class="code">http://localhost:3001<br>http://localhost:5173</div>
+                        </li>
+                        <li>Authorized redirect URIs:
+                            <div class="code">http://localhost:3001<br>http://localhost:5173</div>
+                        </li>
+                        <li>Click <strong>"CREATE"</strong></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <h2>Copy Client ID</h2>
+                <div class="step-content">
+                    <p>After creating, you'll see a popup with your credentials:</p>
+                    <ul>
+                        <li>Copy the <strong>Client ID</strong> (looks like: <code>xxxxx.apps.googleusercontent.com</code>)</li>
+                        <li>Keep this window open - you'll need it in the next step</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <h2>Add Client ID to Project</h2>
+                <div class="step-content">
+                    <p><strong>Option A: Use the batch file (easiest)</strong></p>
+                    <ol>
+                        <li>Double-click <code>ADD_GOOGLE_CLIENT_ID.bat</code> in the rcmc-emr folder</li>
+                        <li>Paste your Client ID when prompted</li>
+                        <li>Press Enter</li>
+                    </ol>
+
+                    <p style="margin-top: 16px;"><strong>Option B: Manual</strong></p>
+                    <ol>
+                        <li>Open <code>rcmc-emr/.env</code> file</li>
+                        <li>Add this line at the end:</li>
+                    </ol>
+                    <div class="code">VITE_GOOGLE_CLIENT_ID=your-client-id-here.apps.googleusercontent.com</div>
+                    <ol start="3">
+                        <li>Replace <code>your-client-id-here</code> with your actual Client ID</li>
+                        <li>Save the file</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">5</span>
+                <h2>Restart Frontend Server</h2>
+                <div class="step-content">
+                    <p>Open Command Prompt in the <code>rcmc-emr</code> folder and run:</p>
+                    <div class="code">npm run dev</div>
+                    <p style="margin-top: 12px;">Wait for the server to start, then open: <a href="http://localhost:3001" target="_blank">http://localhost:3001</a></p>
+                </div>
+            </div>
+
+            <div class="step">
+                <span class="step-number">6</span>
+                <h2>Test Lab Results Upload</h2>
+                <div class="step-content">
+                    <ol>
+                        <li>Login with: <code>admin@rcmc.com</code> / <code>Admin123!</code></li>
+                        <li>Click <strong>"Lab Results"</strong> in the sidebar</li>
+                        <li>Click <strong>"Upload Lab Result"</strong></li>
+                        <li>Fill in the form and select a PDF file</li>
+                        <li>Click <strong>"Upload"</strong></li>
+                        <li><strong>First time only:</strong> Google will ask "Allow RCMC EMR to access your Drive?"</li>
+                        <li>Click <strong>"Allow"</strong></li>
+                        <li>File uploads to your Google Drive! 🎉</li>
+                    </ol>
+
+                    <div class="success">
+                        <strong>✅ Success!</strong> After the first authorization, all future uploads work seamlessly without any prompts.
+                    </div>
+                </div>
+            </div>
+
+            <div class="checklist">
+                <h3 style="margin-bottom: 12px;">📋 Setup Checklist</h3>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check1">
+                    <label for="check1">Created OAuth Client ID in Google Cloud Console</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check2">
+                    <label for="check2">Copied Client ID</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check3">
+                    <label for="check3">Added Client ID to .env file</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check4">
+                    <label for="check4">Restarted frontend server</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check5">
+                    <label for="check5">Tested lab result upload</label>
+                </div>
+                <div class="checklist-item">
+                    <input type="checkbox" id="check6">
+                    <label for="check6">Verified file appears in Google Drive</label>
+                </div>
+            </div>
+
+            <div class="info">
+                <strong>💡 Troubleshooting:</strong>
+                <ul style="margin-top: 8px;">
+                    <li><strong>"Google Client ID not configured"</strong> - Make sure you added it to .env and restarted the server</li>
+                    <li><strong>"This app isn't verified"</strong> - Click "Advanced" → "Go to RCMC EMR (unsafe)" (it's safe, it's your own app)</li>
+                    <li><strong>Upload fails</strong> - Check browser console (F12) for errors</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>RCMC EMR</strong> - Lab Results Management System</p>
+            <p style="margin-top: 8px;">Need help? Check <code>OAUTH_SETUP_GUIDE.md</code> for detailed instructions</p>
+        </div>
+    </div>
+</body>
+</html>

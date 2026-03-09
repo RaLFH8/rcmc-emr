@@ -1,0 +1,124 @@
+⚠️ IMPORTANT: You tried to run the SQL with placeholder text!
+================================================================
+
+The error happened because you need to REPLACE the placeholder text with REAL UUIDs.
+
+DON'T run the SQL as-is. Follow these steps:
+
+
+📋 STEP-BY-STEP GUIDE (DO THIS IN ORDER)
+=========================================
+
+STEP 1: Get the Real UUIDs
+---------------------------
+1. Go to Supabase Dashboard: https://imznlhualfuvstfyvdns.supabase.co
+2. Click "SQL Editor" in left menu
+3. Click "New Query"
+4. Copy and paste ONLY this:
+
+   SELECT id, email FROM auth.users ORDER BY created_at DESC;
+
+5. Click "Run"
+6. You'll see a table with UUIDs and emails
+7. COPY the UUID for your doctor user (looks like: a1b2c3d4-e5f6-7890-1234-567890abcdef)
+8. COPY the UUID for your receptionist user
+
+
+STEP 2: Create Doctor Profile
+------------------------------
+1. In Supabase SQL Editor, click "New Query" again
+2. Copy this SQL and REPLACE the values:
+
+   INSERT INTO public.user_profiles (id, email, full_name, role, status, created_at)
+   VALUES (
+     'PASTE-THE-DOCTOR-UUID-HERE',
+     'doctor@rcmc.com',
+     'Dr. Juan Santos',
+     'doctor',
+     'Active',
+     NOW()
+   );
+
+3. REPLACE 'PASTE-THE-DOCTOR-UUID-HERE' with the actual UUID from Step 1
+4. REPLACE 'doctor@rcmc.com' with the actual email
+5. REPLACE 'Dr. Juan Santos' with the actual name
+6. Click "Run"
+
+
+STEP 3: Create Receptionist Profile
+------------------------------------
+1. Click "New Query" again
+2. Copy this SQL and REPLACE the values:
+
+   INSERT INTO public.user_profiles (id, email, full_name, role, status, created_at)
+   VALUES (
+     'PASTE-THE-RECEPTIONIST-UUID-HERE',
+     'receptionist@rcmc.com',
+     'Maria Cruz',
+     'receptionist',
+     'Active',
+     NOW()
+   );
+
+3. REPLACE 'PASTE-THE-RECEPTIONIST-UUID-HERE' with the actual UUID from Step 1
+4. REPLACE 'receptionist@rcmc.com' with the actual email
+5. REPLACE 'Maria Cruz' with the actual name
+6. Click "Run"
+
+
+STEP 4: Verify It Worked
+-------------------------
+1. In Supabase SQL Editor, run this:
+
+   SELECT email, full_name, role FROM user_profiles ORDER BY created_at DESC;
+
+2. You should see 3 users:
+   - admin@rcmc.com
+   - Your doctor email
+   - Your receptionist email
+
+
+STEP 5: Test Login
+-------------------
+1. Go to: http://localhost:3002
+2. Try logging in with doctor credentials
+3. You should see the doctor's name in top right corner!
+
+
+📝 EXAMPLE WITH REAL DATA
+==========================
+
+Let's say Step 1 showed you:
+- Doctor UUID: 12345678-abcd-1234-abcd-123456789012
+- Doctor Email: drjuan@rcmc.com
+
+Then your SQL should look like:
+
+INSERT INTO public.user_profiles (id, email, full_name, role, status, created_at)
+VALUES (
+  '12345678-abcd-1234-abcd-123456789012',
+  'drjuan@rcmc.com',
+  'Dr. Juan Santos',
+  'doctor',
+  'Active',
+  NOW()
+);
+
+See? The UUID is the REAL one, not the placeholder text!
+
+
+❌ COMMON MISTAKES
+==================
+1. Running the SQL without replacing the placeholder text
+2. Forgetting the quotes around the UUID
+3. Using the wrong UUID for the wrong user
+4. Not replacing the email and name
+
+
+✅ SERVER STATUS
+================
+Server is running on: http://localhost:3002
+Ready for testing after you create the profiles!
+
+
+Need help? The UUIDs are in Supabase Dashboard > Authentication > Users

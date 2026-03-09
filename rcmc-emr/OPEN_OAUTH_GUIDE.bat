@@ -1,0 +1,3 @@
+@echo off
+echo Opening Google OAuth Setup Guide...
+start OAUTH_VISUAL_GUIDE.html
