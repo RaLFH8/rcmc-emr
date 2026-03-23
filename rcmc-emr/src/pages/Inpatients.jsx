@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react'
 import { Plus, Search, User, Bed, Calendar, Clock, X, Activity } from 'lucide-react'
 import { db } from '../lib/supabase'
 import SkeletonLoader from '../components/SkeletonLoader'
+import { useAuth } from '../context/AuthContext'
 
 const Inpatients = () => {
+  const { isAdmin, isDoctor, isReceptionist } = useAuth()
+  const canDischarge = isAdmin || isDoctor
   const [inpatients, setInpatients] = useState([])
   const [patients, setPatients] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -296,12 +299,14 @@ const Inpatients = () => {
               >
                 View Details
               </button>
-              <button
-                onClick={() => handleDischarge(patient.id)}
-                className="flex-1 px-4 py-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors text-sm font-semibold"
-              >
-                Discharge
-              </button>
+              {canDischarge && (
+                <button
+                  onClick={() => handleDischarge(patient.id)}
+                  className="flex-1 px-4 py-2 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors text-sm font-semibold"
+                >
+                  Discharge
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -526,15 +531,17 @@ const Inpatients = () => {
                 <button className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors">
                   Update Status
                 </button>
-                <button 
-                  onClick={() => {
-                    setViewingPatient(null)
-                    handleDischarge(viewingPatient.id)
-                  }}
-                  className="flex-1 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors"
-                >
-                  Discharge Patient
-                </button>
+                {canDischarge && (
+                  <button 
+                    onClick={() => {
+                      setViewingPatient(null)
+                      handleDischarge(viewingPatient.id)
+                    }}
+                    className="flex-1 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors"
+                  >
+                    Discharge Patient
+                  </button>
+                )}
               </div>
             </div>
           </div>
