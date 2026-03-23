@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  
+  body {
+    @apply antialiased;
+    background: linear-gradient(135deg, #5B8A8F 0%, #7FA5A8 100%);
+    color: #2D3748;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  /* Worklytics card styling */
+  .workly-card {
+    @apply bg-white rounded-workly shadow-workly hover:shadow-workly-hover transition-shadow duration-300;
+  }
+  
+  /* Stat card with colored background */
+  .stat-card-purple {
+    @apply workly-card p-6 bg-workly-purple-light;
+  }
+  
+  .stat-card-coral {
+    @apply workly-card p-6 bg-workly-coral-light;
+  }
+  
+  .stat-card-blue {
+    @apply workly-card p-6 bg-workly-blue-bg;
+  }
+  
+  .stat-card-green {
+    @apply workly-card p-6 bg-workly-green-bg;
+  }
+  
+  /* Buttons */
+  .btn-primary {
+    @apply bg-gradient-coral text-white px-6 py-2.5 rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-md;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-gray-800 px-6 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition-colors border border-gray-200 shadow-sm;
+  }
+  
+  /* Input styling */
+  .workly-input {
+    @apply bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-workly-coral focus:border-transparent transition-all;
+  }
+  
+  /* Badge styling */
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  
+  .badge-success {
+    @apply bg-workly-green-bg text-workly-green;
+  }
+  
+  .badge-warning {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+  
+  .badge-info {
+    @apply bg-workly-blue-bg text-blue-700;
+  }
+  
+  /* Table styling */
+  .workly-table-header {
+    @apply bg-gray-50 border-b border-gray-200;
+  }
+  
+  .workly-table-row {
+    @apply border-b border-gray-100 hover:bg-gray-50 transition-colors;
+  }
+}
