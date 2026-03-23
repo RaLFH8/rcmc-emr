@@ -1,3 +1,0 @@
-@echo off
-echo Opening visual guide...
-start "" "SHARE_FOLDER_VISUAL_GUIDE.html"

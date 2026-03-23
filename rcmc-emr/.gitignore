@@ -16,6 +16,7 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+server/.env
 
 # Logs
 npm-debug.log*
@@ -23,6 +24,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+*.log
 
 # Editor directories and files
 .vscode/*
@@ -45,9 +47,52 @@ lerna-debug.log*
 *.sqlite
 *.sqlite3
 
-# Documentation (optional - remove if you want to include)
+# ── Dev-session noise files ──────────────────────────────────────────────────
+
+# Windows helper / automation scripts
+*.bat
+*.ps1
+
+# Dev-session text notes
+*.txt
+
+# One-off test/debug scripts in root
+test-*.js
+verify-*.js
+reproduce-*.js
+simple-*.js
+edge-case-*.js
+standalone-*.js
+run-*.js
+accurate-*.js
+VERIFY_CODE_CORRECTNESS.js
+
+# Test HTML files (keep index.html)
+test-login.html
+TEST_BACKEND_CONNECTION.html
+OAUTH_VISUAL_GUIDE.html
+SHARE_FOLDER_VISUAL_GUIDE.html
+SMS_VISUAL_SETUP.html
+WALK_IN_PATIENT_REGISTRATION_FORM.html
+
+# ── Documentation ────────────────────────────────────────────────────────────
+# Exclude all .md dev-session notes, keep real docs and spec files
 *.md
 !README.md
+!SETUP_GUIDE.md
+!CLOUDFLARE_DEPLOY.md
+!PROJECT_SUMMARY.md
+!.kiro/**
+!src/**
+!supabase/**
+!migrations/**
+!server/**
+!sample-data/**
 
-# SQL scripts (optional - remove if you want to include)
+# ── SQL scripts ──────────────────────────────────────────────────────────────
+# Exclude loose one-off SQL fix scripts, keep schema + migrations
 *.sql
+!supabase-schema.sql
+!migrations/**
+!supabase/**
+!.kiro/specs/**/migrations/**

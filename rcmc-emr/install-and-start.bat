@@ -1,6 +1,0 @@
-@echo off
-echo Installing jsPDF dependency...
-call npm install
-echo.
-echo Starting development server...
-call npm run dev

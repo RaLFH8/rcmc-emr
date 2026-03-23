@@ -1,0 +1,91 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Doctor Revenue Tab Visibility for Admin/Doctor Users
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: For this deterministic bug, scope the property to concrete failing cases (admin user and doctor user) to ensure reproducibility
+  - Test that Reports.jsx displays the Doctor Revenue Sharing tab for users with userProfile.role = 'admin' or 'doctor'
+  - The test assertions should verify:
+    - The tabs array includes a tab with id 'doctor-revenue'
+    - The tab appears after the 'inventory' tab
+    - The tab label is 'Doctor Revenue Sharing'
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found:
+    - Admin user logs in: tabs array does not include 'doctor-revenue' tab
+    - Doctor user logs in: tabs array does not include 'doctor-revenue' tab
+    - Console inspection shows user.role is undefined while userProfile.role contains correct role
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Non-Admin/Doctor Tab Visibility and Behavior
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for non-buggy inputs:
+    - Receptionist user sees 5 tabs: Analytics, Financial, Patients, Appointments, Inventory
+    - Tab click handlers work correctly
+    - Tab switching preserves active state
+    - Date range selector works for all tabs
+    - Export functionality works for all tabs
+  - Write property-based tests capturing observed behavior patterns:
+    - For all users where userProfile.role NOT IN ['admin', 'doctor'], tabs array should NOT include 'doctor-revenue'
+    - For all users, the other 5 tabs should appear in the same order
+    - For all users, tab navigation should work correctly
+    - For null/undefined userProfile, no crash should occur and tab should not appear
+  - Property-based testing generates many test cases for stronger guarantees
+  - Run tests on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 3. Fix for Doctor Revenue Tab Missing
+
+  - [x] 3.1 Implement the fix in Reports.jsx
+    - Update line 16: Change `const { user } = useAuth()` to `const { user, userProfile } = useAuth()`
+    - Update line 280: Change `...(user && ['admin', 'doctor'].includes(user.role)` to `...(userProfile && ['admin', 'doctor'].includes(userProfile.role)`
+    - Verify null safety: The `userProfile &&` check handles the case where userProfile is null during initial load
+    - No other changes needed: DoctorRevenueReport component and all other logic remain unchanged
+    - _Bug_Condition: isBugCondition(input) where input.userProfile.role IN ['admin', 'doctor'] AND conditionalCheckUses(input.user.role) AND input.user.role IS undefined_
+    - _Expected_Behavior: For any user where userProfile.role is 'admin' or 'doctor', the tabs array SHALL include the Doctor Revenue Sharing tab after the Inventory tab_
+    - _Preservation: All other tabs (Analytics, Financial, Patients, Appointments, Inventory) must continue to appear for all users. Users with 'receptionist' or other roles must continue to NOT see the Doctor Revenue Sharing tab. Tab navigation, date range selector, and export functionality must continue to work exactly as before._
+    - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.3, 3.4, 3.5_
+
+  - [x] 3.2 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Doctor Revenue Tab Visibility for Admin/Doctor Users
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - Verify:
+      - Admin user sees Doctor Revenue Sharing tab
+      - Doctor user sees Doctor Revenue Sharing tab
+      - Tab appears in correct position (after Inventory)
+      - Tab has correct label and id
+    - _Requirements: 2.1, 2.2, 2.3_
+
+  - [x] 3.3 Verify preservation tests still pass
+    - **Property 2: Preservation** - Non-Admin/Doctor Tab Visibility and Behavior
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix:
+      - Receptionist users do NOT see Doctor Revenue Sharing tab
+      - All other tabs continue to appear correctly
+      - Tab navigation works correctly
+      - Date range selector works for all tabs
+      - Export functionality works for all tabs
+      - Null/undefined userProfile does not cause crashes
+    - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
+  - Verify the fix works in the browser:
+    - Log in as admin user, navigate to Reports page, verify Doctor Revenue Sharing tab appears
+    - Log in as doctor user, navigate to Reports page, verify Doctor Revenue Sharing tab appears
+    - Log in as receptionist user, navigate to Reports page, verify tab does NOT appear
+    - Click the Doctor Revenue Sharing tab and verify DoctorRevenueReport component renders correctly
+    - Verify all other tabs continue to work correctly

@@ -4,3 +4,13 @@ npm-debug.log
 .DS_Store
 *.log
 .env
+
+# Dev-session noise
+backups/
+*.bat
+*.ps1
+*.txt
+*.md
+!README.md
+!.kiro/**
+*.sql
