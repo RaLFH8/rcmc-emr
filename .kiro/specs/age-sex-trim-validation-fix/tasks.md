@@ -1,0 +1,81 @@
+# Implementation Plan
+
+- [x] 1. Write bug condition exploration test
+  - **Property 1: Fault Condition** - Non-String Value Handling
+  - **CRITICAL**: This test MUST FAIL on unfixed code - failure confirms the bug exists
+  - **DO NOT attempt to fix the test or the code when it fails**
+  - **NOTE**: This test encodes the expected behavior - it will validate the fix when it passes after implementation
+  - **GOAL**: Surface counterexamples that demonstrate the bug exists
+  - **Scoped PBT Approach**: For deterministic bugs, scope the property to the concrete failing case(s) to ensure reproducibility
+  - Test that `parseAgeSex(null)` throws "ageSex.trim is not a function" error
+  - Test that `parseAgeSex(undefined)` throws "ageSex.trim is not a function" error
+  - Test that `parseAgeSex(25)` throws "ageSex.trim is not a function" error
+  - Test that `parseAgeSex({})` throws "ageSex.trim is not a function" error
+  - Test that `parseAgeSex([])` throws "ageSex.trim is not a function" error
+  - The test assertions should verify that after the fix, all these inputs return null without throwing errors
+  - Run test on UNFIXED code
+  - **EXPECTED OUTCOME**: Test FAILS (this is correct - it proves the bug exists)
+  - Document counterexamples found to understand root cause
+  - Mark task complete when test is written, run, and failure is documented
+  - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+- [x] 2. Write preservation property tests (BEFORE implementing fix)
+  - **Property 2: Preservation** - Valid String Format Parsing
+  - **IMPORTANT**: Follow observation-first methodology
+  - Observe behavior on UNFIXED code for valid string inputs
+  - Observe: `parseAgeSex("25/M")` returns `{age: 25, sex: "M"}` on unfixed code
+  - Observe: `parseAgeSex("30 / F")` returns `{age: 30, sex: "F"}` on unfixed code
+  - Observe: `parseAgeSex("45/m")` returns `{age: 45, sex: "M"}` on unfixed code (case normalization)
+  - Observe: `parseAgeSex("25M")` returns null on unfixed code (invalid format)
+  - Observe: `parseAgeSex("200/M")` returns null on unfixed code (age out of range)
+  - Write property-based test: for all valid age/sex string formats, parsing result matches expected structure
+  - Write property-based test: for all invalid string formats, result is null (no crash)
+  - Write property-based test: for all valid ages (0-150) with valid sex (M/F), parsing succeeds
+  - Verify tests pass on UNFIXED code
+  - **EXPECTED OUTCOME**: Tests PASS (this confirms baseline behavior to preserve)
+  - Mark task complete when tests are written, run, and passing on unfixed code
+  - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+- [x] 3. Fix for parseAgeSex non-string value handling
+
+  - [x] 3.1 Implement the fix
+    - Strengthen type guard with explicit null check: `if (value === null || value === undefined)`
+    - Add explicit undefined check before typeof check
+    - Keep existing `typeof value !== 'string'` check for other non-string types
+    - After confirming value is a string, assign `const trimmedValue = value.trim()`
+    - Check if trimmedValue is empty string and return null
+    - Replace all subsequent references to `value` with `trimmedValue` in pattern matching
+    - Maintain all existing validation logic: regex pattern, age range (0-150), sex normalization
+    - _Bug_Condition: isBugCondition(input) where input === null OR input === undefined OR typeof input !== 'string'_
+    - _Expected_Behavior: For all non-string inputs, return null without throwing error_
+    - _Preservation: All valid string formats ("25/M", "30 / F", "45/m") continue to parse correctly with same results_
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6_
+
+  - [x] 3.2 Verify bug condition exploration test now passes
+    - **Property 1: Expected Behavior** - Non-String Value Handling
+    - **IMPORTANT**: Re-run the SAME test from task 1 - do NOT write a new test
+    - The test from task 1 encodes the expected behavior
+    - When this test passes, it confirms the expected behavior is satisfied
+    - Run bug condition exploration test from step 1
+    - Verify `parseAgeSex(null)` returns null without error
+    - Verify `parseAgeSex(undefined)` returns null without error
+    - Verify `parseAgeSex(25)` returns null without error
+    - Verify `parseAgeSex({})` returns null without error
+    - Verify `parseAgeSex([])` returns null without error
+    - **EXPECTED OUTCOME**: Test PASSES (confirms bug is fixed)
+    - _Requirements: 2.1, 2.2, 2.3, 2.4_
+
+  - [x] 3.3 Verify preservation tests still pass
+    - **Property 2: Preservation** - Valid String Format Parsing
+    - **IMPORTANT**: Re-run the SAME tests from task 2 - do NOT write new tests
+    - Run preservation property tests from step 2
+    - Verify `parseAgeSex("25/M")` still returns `{age: 25, sex: "M"}`
+    - Verify `parseAgeSex("30 / F")` still returns `{age: 30, sex: "F"}`
+    - Verify `parseAgeSex("45/m")` still returns `{age: 45, sex: "M"}`
+    - Verify `parseAgeSex("25M")` still returns null (invalid format)
+    - Verify `parseAgeSex("200/M")` still returns null (age out of range)
+    - **EXPECTED OUTCOME**: Tests PASS (confirms no regressions)
+    - Confirm all tests still pass after fix (no regressions)
+
+- [x] 4. Checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.
