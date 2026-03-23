@@ -1,0 +1,21 @@
+name,category,price,description,status
+General Consultation,Consultation,350.00,Regular outpatient consultation with physician,Active
+Pediatric Consultation,Consultation,400.00,Consultation for patients 12 years old and below,Active
+Prenatal Check-up,Consultation,500.00,Routine prenatal visit and monitoring,Active
+Complete Blood Count,Laboratory,350.00,CBC with differential count,Active
+Urinalysis,Laboratory,150.00,Complete urinalysis with microscopy,Active
+Blood Glucose (FBS),Laboratory,180.00,Fasting blood sugar test,Active
+Lipid Profile,Laboratory,650.00,Total cholesterol HDL LDL triglycerides,Active
+Creatinine,Laboratory,250.00,Serum creatinine test,Active
+Uric Acid,Laboratory,220.00,Serum uric acid test,Active
+Chest X-Ray,Imaging,800.00,PA view chest radiograph,Active
+Abdominal Ultrasound,Imaging,1500.00,Complete abdominal ultrasound,Active
+ECG 12-Lead,Procedure,500.00,12-lead electrocardiogram,Active
+Nebulization,Procedure,250.00,Nebulization therapy per session,Active
+Wound Dressing,Procedure,200.00,Simple wound cleaning and dressing,Active
+IV Insertion,Procedure,150.00,Intravenous line insertion,Active
+Flu Vaccine,Vaccination,800.00,Influenza vaccine (seasonal),Active
+Hepatitis B Vaccine,Vaccination,600.00,Hepatitis B immunization per dose,Active
+Pneumococcal Vaccine,Vaccination,2500.00,Pneumococcal conjugate vaccine,Active
+Paracetamol 500mg (dispensed),Medication,15.00,Paracetamol tablet per piece,Active
+Amoxicillin 500mg (dispensed),Medication,25.00,Amoxicillin capsule per piece,Active

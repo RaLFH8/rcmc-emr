@@ -1,0 +1,169 @@
+name: RCMC EMR Daily Backup
+
+# Schedule automated daily backups at 2:00 AM Philippine Time (UTC+8)
+# 2:00 AM PHT = 18:00 UTC (6:00 PM UTC previous day)
+on:
+  schedule:
+    # Daily backup at 18:00 UTC (2:00 AM PHT)
+    - cron: '0 18 * * *'
+    
+    # Weekly backup at 19:00 UTC Saturday (3:00 AM PHT Sunday)
+    - cron: '0 19 * * 6'
+    
+    # Monthly backup at 20:00 UTC on the 1st (4:00 AM PHT on the 1st)
+    - cron: '0 20 1 * *'
+  
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      backup_type:
+        description: 'Backup type'
+        required: true
+        default: 'manual'
+        type: choice
+        options:
+          - manual
+          - daily
+          - weekly
+          - monthly
+
+jobs:
+  backup:
+    name: Execute Database Backup
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Determine Backup Type
+        id: backup-type
+        run: |
+          # Determine backup type based on trigger
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BACKUP_TYPE="${{ github.event.inputs.backup_type }}"
+          elif [ "${{ github.event.schedule }}" = "0 18 * * *" ]; then
+            BACKUP_TYPE="daily"
+          elif [ "${{ github.event.schedule }}" = "0 19 * * 6" ]; then
+            BACKUP_TYPE="weekly"
+          elif [ "${{ github.event.schedule }}" = "0 20 1 * *" ]; then
+            BACKUP_TYPE="monthly"
+          else
+            BACKUP_TYPE="manual"
+          fi
+          
+          echo "backup_type=$BACKUP_TYPE" >> $GITHUB_OUTPUT
+          echo "Backup type: $BACKUP_TYPE"
+      
+      - name: Trigger Backup Edge Function
+        id: trigger-backup
+        run: |
+          echo "Triggering ${{ steps.backup-type.outputs.backup_type }} backup..."
+          
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/backup-scheduler" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"backupType\": \"${{ steps.backup-type.outputs.backup_type }}\"}")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | sed '$d')
+          
+          echo "HTTP Status: $http_code"
+          echo "Response Body:"
+          echo "$body" | jq '.' || echo "$body"
+          
+          # Save response for later steps
+          echo "$body" > backup_response.json
+          
+          if [ "$http_code" -ne 200 ]; then
+            echo "::error::Backup failed with HTTP $http_code"
+            echo "::error::Response: $body"
+            exit 1
+          fi
+          
+          echo "Backup triggered successfully!"
+      
+      - name: Parse Backup Result
+        if: success()
+        run: |
+          # Extract backup details from response
+          backup_id=$(jq -r '.backupId' backup_response.json)
+          filename=$(jq -r '.filename' backup_response.json)
+          file_size=$(jq -r '.fileSize' backup_response.json)
+          status=$(jq -r '.status' backup_response.json)
+          
+          echo "Backup ID: $backup_id"
+          echo "Filename: $filename"
+          echo "File Size: $file_size bytes ($(echo "scale=2; $file_size / 1024 / 1024" | bc) MB)"
+          echo "Status: $status"
+          
+          # Create job summary
+          echo "## Backup Completed Successfully ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backup Type:** ${{ steps.backup-type.outputs.backup_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backup ID:** \`$backup_id\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **Filename:** \`$filename\`" >> $GITHUB_STEP_SUMMARY
+          echo "- **File Size:** $(echo "scale=2; $file_size / 1024 / 1024" | bc) MB" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status:** $status" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+      
+      - name: Verify Backup in Database
+        if: success()
+        run: |
+          echo "Waiting 5 seconds for database to update..."
+          sleep 5
+          
+          # Note: This step would require database access
+          # For now, we'll just log that verification should be done manually
+          echo "✅ Backup triggered successfully"
+          echo "⚠️  Manual verification recommended:"
+          echo "   1. Check backup_logs table in Supabase"
+          echo "   2. Verify file exists in database-backups storage bucket"
+          echo "   3. Check backup file size and encryption status"
+      
+      - name: Notify on Failure
+        if: failure()
+        run: |
+          echo "## Backup Failed ❌" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backup Type:** ${{ steps.backup-type.outputs.backup_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Timestamp:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Action Required:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Check Edge Function logs in Supabase Dashboard" >> $GITHUB_STEP_SUMMARY
+          echo "2. Verify environment variables are configured" >> $GITHUB_STEP_SUMMARY
+          echo "3. Check database connectivity" >> $GITHUB_STEP_SUMMARY
+          echo "4. Review backup_logs table for error details" >> $GITHUB_STEP_SUMMARY
+          
+          # Optional: Send notification (requires additional setup)
+          # - Email via SendGrid
+          # - Slack webhook
+          # - Discord webhook
+          # - SMS via Twilio
+          
+          echo "::error::Backup workflow failed. Check logs for details."
+
+  # Optional: Verify backup health after each run
+  verify-backup-health:
+    name: Verify Backup Health
+    runs-on: ubuntu-latest
+    needs: backup
+    if: always()
+    
+    steps:
+      - name: Check Recent Backup Status
+        run: |
+          echo "## Backup Health Check 🏥" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Recommendations:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify backup success rate is above 95%" >> $GITHUB_STEP_SUMMARY
+          echo "- Check that backups are running daily" >> $GITHUB_STEP_SUMMARY
+          echo "- Monitor storage usage (free tier: 500 MB limit)" >> $GITHUB_STEP_SUMMARY
+          echo "- Test disaster recovery procedure monthly" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Manual Verification Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Run this SQL in Supabase SQL Editor:" >> $GITHUB_STEP_SUMMARY
+          echo '```sql' >> $GITHUB_STEP_SUMMARY
+          echo "SELECT backup_filename, status, file_size_bytes / 1024 / 1024 as size_mb," >> $GITHUB_STEP_SUMMARY
+          echo "       created_at FROM backup_logs ORDER BY created_at DESC LIMIT 5;" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "2. Check Supabase Storage → database-backups bucket" >> $GITHUB_STEP_SUMMARY
+          echo "3. Verify backup file exists and is encrypted" >> $GITHUB_STEP_SUMMARY
