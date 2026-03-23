@@ -22,7 +22,6 @@ export const initGoogleDrive = () => {
     script.async = true
     script.defer = true
     script.onload = () => {
-      console.log('✅ Google Identity Services loaded')
       resolve()
     }
     script.onerror = () => {
@@ -54,7 +53,6 @@ export const getAccessToken = () => {
           return
         }
         accessToken = response.access_token
-        console.log('✅ Access token obtained')
         resolve(accessToken)
       },
     })
@@ -66,8 +64,6 @@ export const getAccessToken = () => {
 // Upload file to Google Drive
 export const uploadToGoogleDrive = async (file, metadata) => {
   try {
-    console.log('Starting Google Drive upload...')
-    
     // Get access token
     const token = await getAccessToken()
     
@@ -121,11 +117,30 @@ export const uploadToGoogleDrive = async (file, metadata) => {
           }
 
           const result = await response.json()
-          console.log('✅ File uploaded to Google Drive:', result)
+
+          // Make the file publicly readable so the stored URL works for anyone
+          try {
+            await fetch(
+              `https://www.googleapis.com/drive/v3/files/${result.id}/permissions`,
+              {
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Bearer ' + token,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ role: 'reader', type: 'anyone' })
+              }
+            )
+          } catch (permError) {
+            console.warn('⚠️ Could not set file permissions (file may not be publicly accessible):', permError)
+          }
+
+          // Use the direct preview URL which works reliably for publicly shared files
+          const previewUrl = `https://drive.google.com/file/d/${result.id}/preview`
 
           resolve({
             fileId: result.id,
-            url: result.webViewLink,
+            url: previewUrl,
             size: result.size || file.size
           })
         } catch (error) {
@@ -162,8 +177,6 @@ export const deleteFromGoogleDrive = async (fileId) => {
     if (!response.ok && response.status !== 404) {
       throw new Error('Failed to delete file from Google Drive')
     }
-
-    console.log('✅ File deleted from Google Drive')
   } catch (error) {
     console.error('Error deleting from Google Drive:', error)
     throw error
@@ -174,7 +187,6 @@ export const deleteFromGoogleDrive = async (fileId) => {
 export const revokeAccess = () => {
   if (accessToken) {
     window.google.accounts.oauth2.revoke(accessToken, () => {
-      console.log('Access token revoked')
       accessToken = null
     })
   }

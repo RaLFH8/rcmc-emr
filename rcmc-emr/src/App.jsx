@@ -1,30 +1,34 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { InventoryProvider } from './context/InventoryContext'
 import { NotificationProvider } from './context/NotificationContext'
 import { BillingQueueProvider } from './context/BillingQueueContext'
 import { RealtimeProvider } from './context/RealtimeContext'
 import ErrorBoundary from './components/ErrorBoundary'
+import SkeletonLoader from './components/SkeletonLoader'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
-import Dashboard from './pages/Dashboard'
-import Patients from './pages/Patients'
-import Appointments from './pages/Appointments'
-import Rooms from './pages/Rooms'
-import Payments from './pages/Payments'
-import Doctors from './pages/Doctors'
-import Inpatients from './pages/Inpatients'
-import Services from './pages/Services'
-import Inventory from './pages/Inventory'
-import Prescriptions from './pages/Prescriptions'
-import Orders from './pages/Orders'
-import Reports from './pages/Reports'
-import LabResults from './pages/LabResults'
-import UserManagement from './pages/UserManagement'
-import OnlineBookings from './pages/OnlineBookings'
-import PublicBooking from './pages/PublicBooking'
-import PublicSurvey from './pages/PublicSurvey'
 import Login from './pages/Login'
+
+// Lazy load all pages to enable code splitting
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Patients = lazy(() => import('./pages/Patients'))
+const Appointments = lazy(() => import('./pages/Appointments'))
+const Rooms = lazy(() => import('./pages/Rooms'))
+const Payments = lazy(() => import('./pages/Payments'))
+const Doctors = lazy(() => import('./pages/Doctors'))
+const Inpatients = lazy(() => import('./pages/Inpatients'))
+const Services = lazy(() => import('./pages/Services'))
+const Inventory = lazy(() => import('./pages/Inventory'))
+const Prescriptions = lazy(() => import('./pages/Prescriptions'))
+const Orders = lazy(() => import('./pages/Orders'))
+const Reports = lazy(() => import('./pages/Reports'))
+const LabResults = lazy(() => import('./pages/LabResults'))
+const UserManagement = lazy(() => import('./pages/UserManagement'))
+const OnlineBookings = lazy(() => import('./pages/OnlineBookings'))
+const PublicBooking = lazy(() => import('./pages/PublicBooking_IMPROVED'))
+const PublicSurvey = lazy(() => import('./pages/PublicSurvey'))
+const UserProfile = lazy(() => import('./pages/UserProfile'))
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState('dashboard')
@@ -56,16 +60,18 @@ function AppContent() {
 
   // Fade in content after loading
   useEffect(() => {
-    if (!loading && !minLoadingTime && user && userProfile) {
+    if (!loading && !minLoadingTime) {
       setTimeout(() => setShowContent(true), 100)
     }
-  }, [loading, minLoadingTime, user, userProfile])
+  }, [loading, minLoadingTime])
 
   // Show public survey page without authentication
   if (isPublicSurvey) {
     return (
       <ErrorBoundary>
-        <PublicSurvey />
+        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-50"><SkeletonLoader variant="auth" message="Loading..." /></div>}>
+          <PublicSurvey />
+        </Suspense>
       </ErrorBoundary>
     )
   }
@@ -74,35 +80,20 @@ function AppContent() {
   if (isPublicBooking) {
     return (
       <ErrorBoundary>
-        <PublicBooking />
+        <Suspense fallback={<div className="flex items-center justify-center h-screen bg-slate-50"><SkeletonLoader variant="auth" message="Loading..." /></div>}>
+          <PublicBooking />
+        </Suspense>
       </ErrorBoundary>
     )
   }
 
-  // Show pulse loading while checking auth or during minimum display time
+  // Show skeleton loading while checking auth or during minimum display time
   if (loading || minLoadingTime) {
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
-        <div className="text-center">
-          {/* ECG Heartbeat Line - Larger */}
-          <div className="relative w-96 h-32 mx-auto mb-8 overflow-hidden">
-            <svg className="w-full h-full" viewBox="0 0 500 100" preserveAspectRatio="xMidYMid meet">
-              {/* ECG waveform with P wave, QRS complex, and T wave */}
-              <polyline
-                className="heartbeat-line"
-                fill="none"
-                stroke="#14b8a6"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,50 40,50 45,48 50,52 55,50 65,50 70,45 75,50 80,30 85,70 90,50 95,48 100,50 110,50 115,52 120,48 125,50 180,50 185,48 190,52 195,50 205,50 210,45 215,50 220,30 225,70 230,50 235,48 240,50 250,50 255,52 260,48 265,50 320,50 325,48 330,52 335,50 345,50 350,45 355,50 360,30 365,70 370,50 375,48 380,50 390,50 395,52 400,48 405,50 500,50"
-              />
-            </svg>
-          </div>
-          
-          {/* Loading text */}
-          <p className="text-slate-700 font-semibold text-xl mb-2 animate-fade-in">RIZALCARE MEDICAL CLINIC</p>
-          <p className="text-slate-500 text-sm animate-fade-in-delay">Loading...</p>
+        <div className="text-center w-full">
+          <p className="text-slate-700 font-semibold text-xl mb-6 animate-fade-in">RIZALCARE MEDICAL CLINIC</p>
+          <SkeletonLoader variant="auth" message="Loading application..." />
         </div>
       </div>
     )
@@ -117,26 +108,18 @@ function AppContent() {
   const getAvailablePages = () => {
     const role = userProfile.role
     
-    console.log('🔍 User Role:', role)
-    console.log('🔍 User Profile:', userProfile)
-    
     if (role === 'admin') {
-      console.log('✅ Admin role - showing all pages including prescriptions and reports')
       return ['dashboard', 'appointments', 'online-bookings', 'rooms', 'payments', 'doctors', 'patients', 'inpatients', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports', 'users']
     } else if (role === 'doctor') {
-      console.log('✅ Doctor role - showing prescriptions and reports')
       return ['dashboard', 'appointments', 'patients', 'inpatients', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports']
     } else if (role === 'receptionist') {
-      console.log('✅ Receptionist role - showing prescriptions and reports')
-      return ['dashboard', 'appointments', 'online-bookings', 'patients', 'payments', 'rooms', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports']
+      return ['dashboard', 'appointments', 'online-bookings', 'patients', 'payments', 'rooms', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports', 'profile']
     }
     
-    console.log('⚠️ Unknown role - showing only dashboard')
     return ['dashboard']
   }
 
   const availablePages = getAvailablePages()
-  console.log('📋 Available Pages:', availablePages)
 
   const renderPage = () => {
     // Check if user has access to current page
@@ -196,7 +179,9 @@ function AppContent() {
         <TopBar userProfile={userProfile} setCurrentPage={setCurrentPage} />
         
         <main className="flex-1 overflow-y-auto p-4 lg:p-8">
-          {renderPage()}
+          <Suspense fallback={<SkeletonLoader variant="auth" message="Loading..." />}>
+            {renderPage()}
+          </Suspense>
         </main>
       </div>
     </div>

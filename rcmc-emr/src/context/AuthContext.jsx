@@ -17,15 +17,25 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Safety timeout — if Supabase hangs, don't stay stuck on loading forever
+    const timeout = setTimeout(() => setLoading(false), 5000)
+
     // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        loadUserProfile(session.user.id)
-      } else {
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        clearTimeout(timeout)
+        setUser(session?.user ?? null)
+        if (session?.user) {
+          loadUserProfile(session.user.id)
+        } else {
+          setLoading(false)
+        }
+      })
+      .catch((err) => {
+        clearTimeout(timeout)
+        console.error('Session check failed:', err)
         setLoading(false)
-      }
-    })
+      })
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -38,7 +48,10 @@ export const AuthProvider = ({ children }) => {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   const loadUserProfile = async (userId) => {
@@ -55,7 +68,6 @@ export const AuthProvider = ({ children }) => {
         throw error
       }
       
-      console.log('User profile loaded:', data)
       setUserProfile(data)
     } catch (error) {
       console.error('Error loading user profile:', error)

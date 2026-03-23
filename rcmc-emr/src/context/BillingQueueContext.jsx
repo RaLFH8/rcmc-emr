@@ -88,7 +88,6 @@ export function BillingQueueProvider({ children }) {
   }
 
   const handleRealtimeUpdate = async (payload) => {
-    console.log('Billing queue real-time update:', payload.eventType)
     
     if (payload.eventType === 'INSERT') {
       // Fetch queue immediately when new item is added
@@ -106,7 +105,7 @@ export function BillingQueueProvider({ children }) {
   const showNotification = (message) => {
     // Show browser notification if permission granted
     if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('RCMC EMR - Billing Queue', { body: message })
+      new Notification('Rizalcare Medical Clinic - Billing Queue', { body: message })
     }
   }
 

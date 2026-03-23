@@ -1,0 +1,11 @@
+patient_number,first_name,middle_name,last_name,date_of_birth,gender,contact_number,email,address,status
+P-001,Maria,Santos,Reyes,1985-03-22,Female,09171234567,maria.reyes@email.com,"123 Rizal St, Quezon City",Active
+P-002,Juan,,Dela Cruz,1990-07-15,Male,09281234567,juan.delacruz@email.com,"456 Mabini Ave, Manila",Active
+P-003,Ana,Lopez,Garcia,1978-11-30,Female,09391234567,ana.garcia@email.com,"789 Bonifacio Blvd, Makati",Active
+P-004,Roberto,Cruz,Santos,2000-01-05,Male,09501234567,roberto.santos@email.com,"321 Luna St, Pasig",Active
+P-005,Liza,,Mendoza,1965-09-18,Female,09611234567,liza.mendoza@email.com,"654 Aguinaldo Rd, Caloocan",Active
+P-006,Carlos,Bautista,Ramos,1995-04-27,Male,09721234567,,,"Active"
+P-007,Elena,Torres,Villanueva,1982-12-10,Female,09831234567,elena.v@email.com,"987 Quezon Ave, Pasay",Active
+P-008,Miguel,,Fernandez,2005-06-03,Male,09941234567,,,Active
+P-009,Rosa,Aquino,Castillo,1970-08-25,Female,09051234567,rosa.castillo@email.com,"147 Taft Ave, Manila",Inactive
+P-010,Pedro,Navarro,Gonzales,1988-02-14,Male,09161234567,pedro.g@email.com,"258 EDSA, Mandaluyong",Active

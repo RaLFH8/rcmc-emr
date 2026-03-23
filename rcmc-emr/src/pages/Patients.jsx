@@ -1,9 +1,8 @@
-import { useEffect, useState } from 'react'
-import { Plus, Search, Edit2, Trash2, X, User, Calendar, FileText, Activity, DollarSign, Bed, Download, Upload } from 'lucide-react'
+import { useEffect, useState, useCallback } from 'react'
+import { Plus, Search, Edit2, Trash2, X, User, Calendar, FileText, Activity, DollarSign, Bed } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
-import { PatientImportModal } from '../components/import/PatientImportModal'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const Patients = () => {
   const { userProfile } = useAuth()
@@ -11,7 +10,6 @@ const Patients = () => {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
   const [viewingPatient, setViewingPatient] = useState(null)
   const [editingPatient, setEditingPatient] = useState(null)
@@ -43,7 +41,10 @@ const Patients = () => {
   })
 
   useEffect(() => {
-    loadPatients()
+    const timer = setTimeout(() => {
+      loadPatients()
+    }, 300)
+    return () => clearTimeout(timer)
   }, [searchTerm])
 
   const loadPatients = async () => {
@@ -59,39 +60,6 @@ const Patients = () => {
     }
   }
 
-  // Export to CSV
-  const handleExport = () => {
-    const headers = ['Patient Number', 'First Name', 'Last Name', 'Date of Birth', 'Gender', 'Contact Number', 'Email', 'Address', 'Blood Type', 'Emergency Contact', 'Emergency Phone', 'Status']
-    const csvData = patients.map(patient => [
-      patient.patient_number,
-      patient.first_name,
-      patient.last_name,
-      patient.date_of_birth,
-      patient.gender,
-      patient.contact_number,
-      patient.email || '',
-      patient.address,
-      patient.blood_type || '',
-      patient.emergency_contact_name,
-      patient.emergency_contact_number,
-      patient.status
-    ])
-
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `patients_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -193,10 +161,6 @@ const Patients = () => {
         db.getBillingByPatient(patient.id),
         db.getInpatientsByPatient(patient.id)
       ])
-      console.log('Loaded consultations for patient:', patient.id, consultationsData)
-      console.log('Loaded appointments for patient:', patient.id, appointmentsData)
-      console.log('Loaded payments for patient:', patient.id, paymentsData)
-      console.log('Loaded admissions for patient:', patient.id, admissionsData)
       setConsultations(consultationsData || [])
       setAppointments(appointmentsData || [])
       setPayments(paymentsData || [])
@@ -254,7 +218,7 @@ const Patients = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <HeartbeatLoader message="Loading patients..." />
+        <SkeletonLoader variant="table" message="Loading patients..." />
       </div>
     )
   }
@@ -268,23 +232,6 @@ const Patients = () => {
           <p className="text-sm text-slate-600 mt-1">Manage patient records and information</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-sm"
-          >
-            <Download size={20} />
-            Export CSV
-          </button>
-          {/* Only show import button for admin and staff */}
-          {(userProfile?.role === 'admin' || userProfile?.role === 'staff') && (
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors shadow-sm"
-            >
-              <Upload size={20} />
-              Import CSV
-            </button>
-          )}
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors shadow-sm"
@@ -711,7 +658,7 @@ const Patients = () => {
                   <div className="bg-slate-50 rounded-xl p-6">
                     {loadingConsultations ? (
                       <div className="text-center py-8">
-                        <HeartbeatLoader message="Loading appointments..." />
+                        <SkeletonLoader variant="list" rows={3} message="Loading appointments..." />
                       </div>
                     ) : appointments.length === 0 ? (
                       <p className="text-center text-sm text-slate-500 py-8">
@@ -760,7 +707,7 @@ const Patients = () => {
                   <div className="bg-slate-50 rounded-xl p-6">
                     {loadingConsultations ? (
                       <div className="text-center py-8">
-                        <HeartbeatLoader message="Loading consultations..." />
+                        <SkeletonLoader variant="list" rows={3} message="Loading consultations..." />
                       </div>
                     ) : consultations.length === 0 ? (
                       <p className="text-center text-sm text-slate-500 py-8">
@@ -849,7 +796,7 @@ const Patients = () => {
                   <div className="bg-slate-50 rounded-xl p-6">
                     {loadingConsultations ? (
                       <div className="text-center py-8">
-                        <HeartbeatLoader message="Loading payments..." />
+                        <SkeletonLoader variant="list" rows={3} message="Loading payments..." />
                       </div>
                     ) : payments.length === 0 ? (
                       <div className="text-center py-8">
@@ -916,7 +863,7 @@ const Patients = () => {
                   <div className="bg-slate-50 rounded-xl p-6">
                     {loadingConsultations ? (
                       <div className="text-center py-8">
-                        <HeartbeatLoader message="Loading admissions..." />
+                        <SkeletonLoader variant="list" rows={3} message="Loading admissions..." />
                       </div>
                     ) : admissions.length === 0 ? (
                       <div className="text-center py-8">
@@ -988,15 +935,6 @@ const Patients = () => {
         </div>
       )}
 
-      {/* Import Modal */}
-      <PatientImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={() => {
-          loadPatients();
-          setShowImportModal(false);
-        }}
-      />
     </div>
   )
 }

@@ -12,9 +12,6 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3003'
  */
 export const uploadToGoogleDrive = async (file, metadata) => {
   try {
-    console.log('📤 Uploading to Google Drive:', file.name)
-    console.log('📋 Metadata:', metadata)
-    
     // Create FormData
     const formData = new FormData()
     formData.append('file', file)
@@ -35,11 +32,6 @@ export const uploadToGoogleDrive = async (file, metadata) => {
     
     const data = await response.json()
     
-    console.log('✅ Upload successful!')
-    console.log(`📦 Compression: ${data.compressionRatio}% reduction`)
-    console.log(`📊 Original: ${(data.originalSize / 1024 / 1024).toFixed(2)} MB`)
-    console.log(`📊 Compressed: ${(data.compressedSize / 1024 / 1024).toFixed(2)} MB`)
-    
     return {
       fileId: data.fileId,
       url: data.url,
@@ -56,8 +48,6 @@ export const uploadToGoogleDrive = async (file, metadata) => {
  */
 export const deleteFromGoogleDrive = async (fileId) => {
   try {
-    console.log('🗑️ Deleting from Google Drive:', fileId)
-    
     const response = await fetch(`${API_URL}/api/upload/lab-result/${fileId}`, {
       method: 'DELETE'
     })
@@ -67,7 +57,6 @@ export const deleteFromGoogleDrive = async (fileId) => {
       throw new Error(error.message || 'Delete failed')
     }
     
-    console.log('✅ Delete successful!')
     return true
   } catch (error) {
     console.error('❌ Error deleting from Google Drive:', error)
@@ -101,7 +90,6 @@ export const getFileMetadata = async (fileId) => {
 export const createFolderStructure = async (year, month) => {
   try {
     // This would require a backend endpoint
-    console.log(`Creating folder structure: ${year}/${month}`)
     return null
   } catch (error) {
     console.error('Error creating folder structure:', error)

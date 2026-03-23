@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { Plus, Search, Edit2, Trash2, X, Printer, Download, Mail, Phone } from 'lucide-react'
 import { db } from '../lib/supabase'
 import jsPDF from 'jspdf'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
+import FDADrugSearch from '../components/FDADrugSearch'
 
 // Add print styles for A5 paper
 const printStyles = `
@@ -39,15 +40,18 @@ const printStyles = `
       width: 100%;
     }
     
-    /* Optimize prescription for A5 - fit in one page */
+    /* Optimize prescription for A5 */
     .prescription-print-area {
       width: 132mm !important;
-      max-height: 194mm !important;
       margin: 0 auto !important;
       padding: 0 !important;
-      overflow: hidden !important;
-      page-break-after: avoid !important;
       page-break-inside: avoid !important;
+    }
+
+    /* Each page block gets a forced page break before it (except the first) */
+    .prescription-print-area + .prescription-print-area {
+      page-break-before: always !important;
+      margin-top: 0 !important;
     }
     
     /* Compact header */
@@ -121,11 +125,9 @@ const printStyles = `
       margin-bottom: 8px !important;
     }
     
-    /* Compact medications area */
+    /* Medications area */
     .prescription-print-area .min-h-\\[300px\\] {
-      min-height: 120px !important;
-      max-height: 120px !important;
-      overflow: hidden !important;
+      min-height: 80px !important;
     }
     
     /* Compact NO REFILL text */
@@ -189,10 +191,6 @@ const Prescriptions = () => {
         db.getDoctors()
       ])
       
-      console.log('📋 Loaded prescriptions:', prescriptionsData)
-      console.log('👥 Loaded patients:', patientsData)
-      console.log('👨‍⚕️ Loaded doctors:', doctorsData)
-      
       // Transform database format to component format
       const transformedData = prescriptionsData.map(p => {
         // Try to get patient from prescription object first, then search in patients array
@@ -206,10 +204,6 @@ const Prescriptions = () => {
         if (!doctor) {
           doctor = doctorsData.find(doc => doc.id === p.doctor_id)
         }
-        
-        console.log('🔍 Prescription ID:', p.id)
-        console.log('   Patient ID:', p.patient_id, '→ Found:', patient)
-        console.log('   Doctor ID:', p.doctor_id, '→ Found:', doctor)
         
         return {
           id: p.id,
@@ -228,8 +222,6 @@ const Prescriptions = () => {
           s2No: doctor?.s2_number || ''
         }
       })
-      
-      console.log('✅ Transformed prescriptions:', transformedData)
       
       setPrescriptions(transformedData)
       setPatients(patientsData)
@@ -455,7 +447,7 @@ const Prescriptions = () => {
           }
         }
       } catch (e) {
-        console.log('Logo not added:', e)
+        // Logo not available, continue without it
       }
       
       // Clinic info next to logo
@@ -566,22 +558,37 @@ const Prescriptions = () => {
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(0, 0, 0)
       
-      const medicationsStartY = yPos
-      const maxMedicationsHeight = 70
-      
+      const MEDS_PER_PAGE = 5
+      const totalMeds = prescription.medications.length
+      const totalPages = Math.ceil(totalMeds / MEDS_PER_PAGE)
+
       yPos += 6
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(0, 0, 0)
-      
+
       prescription.medications.forEach((med, index) => {
-        if (yPos - medicationsStartY > maxMedicationsHeight) return
-        
+        // Add a new page for every group of 5 after the first
+        if (index > 0 && index % MEDS_PER_PAGE === 0) {
+          doc.addPage('a5', 'portrait')
+          // Minimal continuation header
+          doc.setFillColor(30, 58, 138)
+          doc.rect(0, 0, pageWidth, 8, 'F')
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(7)
+          doc.setTextColor(255, 255, 255)
+          doc.text('RIZALCARE MEDICAL CLINIC — Prescription (continued)', margin, 5.5)
+          const pageNum = Math.floor(index / MEDS_PER_PAGE) + 1
+          doc.setFontSize(6)
+          doc.text(`Page ${pageNum} of ${totalPages}`, pageWidth - margin, 5.5, { align: 'right' })
+          yPos = 18
+        }
+
         // Parse medication format: "Name | Sig: instructions | Dispense: quantity"
         const parts = med.split('|').map(p => p.trim())
         const medName = parts[0] || med
         const sig = parts[1] || ''
         const dispense = parts[2] || ''
-        
+
         // Medication number and name (bold)
         doc.setTextColor(0, 0, 0)
         doc.setFontSize(7)
@@ -589,40 +596,32 @@ const Prescriptions = () => {
         const fullName = `${index + 1}. ${medName}`
         const nameLines = doc.splitTextToSize(fullName, pageWidth - 2 * margin - 10)
         nameLines.forEach((line) => {
-          if (yPos - medicationsStartY <= maxMedicationsHeight) {
-            doc.text(line, margin + 5, yPos)
-            yPos += 4
-          }
+          doc.text(line, margin + 5, yPos)
+          yPos += 4
         })
-        
+
         // Sig (normal, indented)
-        if (sig && yPos - medicationsStartY <= maxMedicationsHeight) {
+        if (sig) {
           doc.setFont('helvetica', 'normal')
-          const sigText = `Sig: ${sig}`
-          const sigLines = doc.splitTextToSize(sigText, pageWidth - 2 * margin - 15)
+          const sigLines = doc.splitTextToSize(`Sig: ${sig}`, pageWidth - 2 * margin - 15)
           sigLines.forEach((line) => {
-            if (yPos - medicationsStartY <= maxMedicationsHeight) {
-              doc.text(line, margin + 10, yPos)
-              yPos += 4
-            }
+            doc.text(line, margin + 10, yPos)
+            yPos += 4
           })
         }
-        
+
         // Dispense (normal, indented)
-        if (dispense && yPos - medicationsStartY <= maxMedicationsHeight) {
+        if (dispense) {
           doc.setFont('helvetica', 'normal')
-          const dispenseText = `Dispense: ${dispense}`
-          const dispenseLines = doc.splitTextToSize(dispenseText, pageWidth - 2 * margin - 15)
+          const dispenseLines = doc.splitTextToSize(`Dispense: ${dispense}`, pageWidth - 2 * margin - 15)
           dispenseLines.forEach((line) => {
-            if (yPos - medicationsStartY <= maxMedicationsHeight) {
-              doc.text(line, margin + 10, yPos)
-              yPos += 4
-            }
+            doc.text(line, margin + 10, yPos)
+            yPos += 4
           })
         }
-        
-        // Add spacing between medications
-        if (index < prescription.medications.length - 1 && yPos - medicationsStartY <= maxMedicationsHeight) {
+
+        // Spacing between medications
+        if (index < totalMeds - 1) {
           yPos += 2
         }
       })
@@ -682,13 +681,13 @@ const Prescriptions = () => {
       doc.setTextColor(71, 85, 105)
       doc.text('PTR No.', doctorX, yPos + 4)
       doc.setTextColor(0, 0, 0)
-      doc.text(prescription.ptrNo || 'N/A', doctorX + 20, yPos + 4)
+      doc.text(prescription.ptrNo || '', doctorX + 20, yPos + 4)
       
       doc.setFont('helvetica', 'normal')
       doc.setTextColor(71, 85, 105)
       doc.text('S2 No.', doctorX, yPos + 8)
       doc.setTextColor(0, 0, 0)
-      doc.text(prescription.s2No || 'N/A', doctorX + 20, yPos + 8)
+      doc.text(prescription.s2No || '', doctorX + 20, yPos + 8)
       
       // Save
       const patientName = prescription.patientName.replace(/\s+/g, '_')
@@ -710,158 +709,170 @@ const Prescriptions = () => {
       {/* Inject print styles */}
       <style>{printStyles}</style>
       
-      {/* Print-only prescription view */}
-      {viewingPrescription && (
-        <div id="prescription-print-view" className="hidden print:block">
-          <div className="prescription-print-area">
-            {/* Header with Logo and Clinic Info */}
-            <div className="bg-white border-2 border-slate-300 rounded-t-lg overflow-hidden">
-              <div className="bg-white p-6 border-b-2 border-[#1e3a8a]">
-                <div className="flex items-center justify-center gap-6">
-                  {/* Logo */}
-                  <div className="w-32 h-32 flex-shrink-0">
-                    <img 
-                      src="/RCMC_LOGO-removebg-preview.png" 
-                      alt="RIZALCARE Medical Clinic Logo"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  <div className="flex-1 text-center">
-                    <h1 className="text-3xl font-bold text-[#1e3a8a] tracking-wider leading-tight mb-1">
-                      RIZALCARE MEDICAL CLINIC
-                    </h1>
-                    <p className="text-base font-semibold text-[#1e3a8a] tracking-[0.3em] mb-3">
-                      YOUR HEALTHCARE PARTNER
-                    </p>
-                    <div className="space-y-1">
-                      <p className="text-sm text-[#1e3a8a] font-medium">
-                        IPDL8 Bldg. GF #25G Dikit St. Brgy Bagumbayan Pililla, Rizal
-                      </p>
-                      <div className="flex items-center justify-center gap-6 text-sm text-[#1e3a8a] font-medium">
-                        <span className="flex items-center gap-2">
-                          <Mail size={14} className="text-[#1e3a8a]" />
-                          rizalcaremedicalclinic@gmail.com
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <Phone size={14} className="text-[#1e3a8a]" />
-                          0938-775-1504 / 0976-273-9445
-                        </span>
+      {/* Print-only prescription view — one A5 page per 5 medications */}
+      {viewingPrescription && (() => {
+        const MEDS_PER_PAGE = 5
+        const meds = viewingPrescription.medications
+        const pages = []
+        for (let i = 0; i < Math.max(1, meds.length); i += MEDS_PER_PAGE) {
+          pages.push(meds.slice(i, i + MEDS_PER_PAGE))
+        }
+        return (
+          <div id="prescription-print-view" className="hidden print:block">
+            {pages.map((pageMeds, pageIndex) => (
+              <div key={pageIndex} className="prescription-print-area">
+                {/* Header with Logo and Clinic Info */}
+                <div className="bg-white border-2 border-slate-300 rounded-t-lg overflow-hidden">
+                  <div className="bg-white p-6 border-b-2 border-[#1e3a8a]">
+                    <div className="flex items-center justify-center gap-6">
+                      {/* Logo */}
+                      <div className="w-32 h-32 flex-shrink-0">
+                        <img 
+                          src="/RCMC_LOGO-removebg-preview.png" 
+                          alt="RIZALCARE Medical Clinic Logo"
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <div className="flex-1 text-center">
+                        <h1 className="text-3xl font-bold text-[#1e3a8a] tracking-wider leading-tight mb-1">
+                          RIZALCARE MEDICAL CLINIC
+                        </h1>
+                        <p className="text-base font-semibold text-[#1e3a8a] tracking-[0.3em] mb-3">
+                          YOUR HEALTHCARE PARTNER
+                        </p>
+                        <div className="space-y-1">
+                          <p className="text-sm text-[#1e3a8a] font-medium">
+                            IPDL8 Bldg. GF #25G Dikit St. Brgy Bagumbayan Pililla, Rizal
+                          </p>
+                          <div className="flex items-center justify-center gap-6 text-sm text-[#1e3a8a] font-medium">
+                            <span className="flex items-center gap-2">
+                              <Mail size={14} className="text-[#1e3a8a]" />
+                              rizalcaremedicalclinic@gmail.com
+                            </span>
+                            <span className="flex items-center gap-2">
+                              <Phone size={14} className="text-[#1e3a8a]" />
+                              0938-775-1504 / 0976-273-9445
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Patient Info Section */}
-              <div className="p-6 bg-slate-50">
-                <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                  <div className="col-span-2 flex items-center">
-                    <span className="font-semibold text-slate-700 w-32">Name:</span>
-                    <span className="flex-1 px-2 py-1 border-b-2 border-slate-400">{viewingPrescription.patientName}</span>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex items-center flex-1">
-                      <span className="font-semibold text-slate-700 w-16">Age:</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.age || calculateAge(viewingPrescription.dateOfBirth)}</span>
+                  {/* Patient Info Section */}
+                  <div className="p-6 bg-slate-50">
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                      <div className="col-span-2 flex items-center">
+                        <span className="font-semibold text-slate-700 w-32">Name:</span>
+                        <span className="flex-1 px-2 py-1 border-b-2 border-slate-400">{viewingPrescription.patientName}</span>
+                      </div>
+                      <div className="flex gap-4">
+                        <div className="flex items-center flex-1">
+                          <span className="font-semibold text-slate-700 w-16">Age:</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.age || calculateAge(viewingPrescription.dateOfBirth)}</span>
+                        </div>
+                        <div className="flex items-center flex-1">
+                          <span className="font-semibold text-slate-700 w-16">Sex:</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.sex || 'N/A'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-semibold text-slate-700 w-32">Date of Birth:</span>
+                        <span className="flex-1 px-2 py-1">{viewingPrescription.dateOfBirth || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center">
+                        <span className="font-semibold text-slate-700 w-16">Date:</span>
+                        <span className="flex-1 px-2 py-1">{viewingPrescription.date}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center flex-1">
-                      <span className="font-semibold text-slate-700 w-16">Sex:</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.sex || 'N/A'}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-semibold text-slate-700 w-32">Date of Birth:</span>
-                    <span className="flex-1 px-2 py-1">{viewingPrescription.dateOfBirth || 'N/A'}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="font-semibold text-slate-700 w-16">Date:</span>
-                    <span className="flex-1 px-2 py-1">{viewingPrescription.date}</span>
+                    {pages.length > 1 && (
+                      <div className="mt-2 text-xs text-slate-500 text-right">
+                        Page {pageIndex + 1} of {pages.length}
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Rx Symbol and Medications */}
-            <div className="bg-white border-x-2 border-slate-300 p-6">
-              {/* Rx Symbol with decorative line */}
-              <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-slate-200">
-                <div className="text-7xl font-serif font-bold text-[#1e3a8a] leading-none">℞</div>
-                <div className="flex-1 h-0.5 bg-gradient-to-r from-[#1e3a8a] to-transparent"></div>
-              </div>
-              
-              {/* Medications Section with Professional Styling */}
-              <div className="space-y-4 min-h-[300px]">
-                {viewingPrescription.medications.map((med, index) => {
-                  // Parse medication format: "Name | Sig: instructions | Dispense: quantity"
-                  const parts = med.split('|').map(p => p.trim())
-                  const medName = parts[0] || med
-                  const sig = parts[1] || ''
-                  const dispense = parts[2] || ''
+                {/* Rx Symbol and Medications */}
+                <div className="bg-white border-x-2 border-slate-300 p-6">
+                  {/* Rx Symbol */}
+                  <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-slate-200">
+                    <div className="text-7xl font-serif font-bold text-[#1e3a8a] leading-none">℞</div>
+                    <div className="flex-1 h-0.5 bg-gradient-to-r from-[#1e3a8a] to-transparent"></div>
+                  </div>
                   
-                  return (
-                    <div key={index} className="mb-3">
-                      <div className="text-sm font-semibold text-slate-900">
-                        {index + 1}. {medName}
+                  {/* Medications for this page */}
+                  <div className="space-y-4 min-h-[300px]">
+                    {pageMeds.map((med, i) => {
+                      const globalIndex = pageIndex * MEDS_PER_PAGE + i
+                      const parts = med.split('|').map(p => p.trim())
+                      const medName = parts[0] || med
+                      const sig = parts[1] || ''
+                      const dispense = parts[2] || ''
+                      return (
+                        <div key={i} className="mb-3">
+                          <div className="text-sm font-semibold text-slate-900">
+                            {globalIndex + 1}. {medName}
+                          </div>
+                          {sig && (
+                            <div className="text-sm text-slate-700 ml-4">Sig: {sig}</div>
+                          )}
+                          {dispense && (
+                            <div className="text-sm text-slate-700 ml-4">Dispense: {dispense}</div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Footer Section */}
+                <div className="bg-white border-2 border-slate-300 border-t-0 rounded-b-lg p-6">
+                  <div className="space-y-6">
+                    {/* Next Follow Up — only on last page */}
+                    {pageIndex === pages.length - 1 && (
+                      <div>
+                        <div className="flex items-center mb-2">
+                          <span className="font-semibold text-slate-700">Next follow up:</span>
+                        </div>
+                        <div className="w-full border-b-2 border-slate-400 px-2 py-2">
+                          {viewingPrescription.followUp || 'N/A'}
+                        </div>
                       </div>
-                      {sig && (
-                        <div className="text-sm text-slate-700 ml-4">
-                          Sig: {sig}
-                        </div>
-                      )}
-                      {dispense && (
-                        <div className="text-sm text-slate-700 ml-4">
-                          Dispense: {dispense}
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+                    )}
 
-            {/* Footer Section */}
-            <div className="bg-white border-2 border-slate-300 border-t-0 rounded-b-lg p-6">
-              <div className="space-y-6">
-                {/* Next Follow Up */}
-                <div>
-                  <div className="flex items-center mb-2">
-                    <span className="font-semibold text-slate-700">Next follow up:</span>
-                  </div>
-                  <div className="w-full border-b-2 border-slate-400 px-2 py-2">
-                    {viewingPrescription.followUp || 'N/A'}
-                  </div>
-                </div>
-
-                {/* NO REFILL and Doctor Info */}
-                <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
-                  <div className="flex items-start">
-                    <p className="text-3xl font-bold text-slate-900">NO REFILL</p>
-                  </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center mb-3">
-                      <span className="font-semibold text-slate-700 w-24">Doctor:</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.doctorName}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="w-24 text-slate-700">License No.</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.licenseNo || 'N/A'}</span>
-                      <span className="ml-2 font-semibold">MD</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="w-24 text-slate-700">PTR No.</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.ptrNo || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <span className="w-24 text-slate-700">S2 No.</span>
-                      <span className="flex-1 px-2 py-1">{viewingPrescription.s2No || 'N/A'}</span>
+                    {/* NO REFILL and Doctor Info */}
+                    <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-200">
+                      <div className="flex items-start">
+                        <p className="text-3xl font-bold text-slate-900">NO REFILL</p>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center mb-3">
+                          <span className="font-semibold text-slate-700 w-24">Doctor:</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.doctorName}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="w-24 text-slate-700">License No.</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.licenseNo || 'N/A'}</span>
+                          <span className="ml-2 font-semibold">MD</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="w-24 text-slate-700">PTR No.</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.ptrNo || ''}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <span className="w-24 text-slate-700">S2 No.</span>
+                          <span className="flex-1 px-2 py-1">{viewingPrescription.s2No || ''}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )
+      })()}
       
       <div className="flex items-center justify-between no-print">
         <div>
@@ -893,7 +904,7 @@ const Prescriptions = () => {
       <div className="grid grid-cols-1 gap-6 no-print">
         {loading ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-            <HeartbeatLoader message="Loading prescriptions..." />
+            <SkeletonLoader variant="list" rows={5} message="Loading prescriptions..." />
           </div>
         ) : filteredPrescriptions.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm p-12 text-center">
@@ -1096,15 +1107,12 @@ const Prescriptions = () => {
                               </div>
                               
                               <div className="space-y-3">
-                                {/* Medication Name */}
+                                {/* Medication Name — PH FDA Drug Search */}
                                 <div>
-                                  <input
-                                    type="text"
-                                    required
+                                  <FDADrugSearch
                                     value={med.name}
-                                    onChange={(e) => updateMedication(index, 'name', e.target.value)}
-                                    placeholder="e.g., Amoxicillin 500 mg"
-                                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent text-sm"
+                                    onChange={(val) => updateMedication(index, 'name', val)}
+                                    placeholder="Search PH FDA drugs or type manually..."
                                   />
                                 </div>
                                 
@@ -1203,11 +1211,11 @@ const Prescriptions = () => {
                             </div>
                             <div className="flex items-center">
                               <span className="w-24 text-slate-700">PTR No.</span>
-                              <span className="flex-1 px-2 py-1">{getSelectedDoctor().ptr_number || 'N/A'}</span>
+                              <span className="flex-1 px-2 py-1">{getSelectedDoctor().ptr_number || ''}</span>
                             </div>
                             <div className="flex items-center">
                               <span className="w-24 text-slate-700">S2 No.</span>
-                              <span className="flex-1 px-2 py-1">{getSelectedDoctor().s2_number || 'N/A'}</span>
+                              <span className="flex-1 px-2 py-1">{getSelectedDoctor().s2_number || ''}</span>
                             </div>
                           </>
                         )}

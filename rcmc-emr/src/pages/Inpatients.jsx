@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Search, User, Bed, Calendar, Clock, X, Activity } from 'lucide-react'
 import { db } from '../lib/supabase'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const Inpatients = () => {
   const [inpatients, setInpatients] = useState([])
@@ -160,7 +160,7 @@ const Inpatients = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <HeartbeatLoader message="Loading inpatients..." />
+        <SkeletonLoader variant="table" message="Loading inpatients..." />
       </div>
     )
   }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Database, Download, RefreshCw, CheckCircle, XCircle, Clock, HardDrive, Shield, AlertTriangle, FileText, Calendar, Filter, Search } from 'lucide-react'
 import { supabase } from '../lib/supabase'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 import { useAuth } from '../context/AuthContext'
 
 const BackupManagement = () => {
@@ -208,7 +208,7 @@ const BackupManagement = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <HeartbeatLoader message="Loading backup data..." />
+        <SkeletonLoader variant="card" columns={3} message="Loading backup data..." />
       </div>
     )
   }

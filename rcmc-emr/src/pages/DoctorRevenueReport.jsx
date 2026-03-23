@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Download, FileText, FileSpreadsheet, AlertCircle, Loader2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { useNavigate } from 'react-router-dom'
 import { getRevenueReport } from '../services/doctorRevenueService'
 import {
   exportRevenueReportCSV,
@@ -24,8 +23,7 @@ import DateRangeFilter from '../components/analytics/DateRangeFilter'
  * Validates: Requirements 1.1, 4.1, 5.1, 8.1, 8.2, 8.3, 8.5, 9.1, 10.1
  */
 const DoctorRevenueReport = () => {
-  const { user } = useAuth()
-  const navigate = useNavigate()
+  const { user, userProfile } = useAuth()
 
   // State management
   const [loading, setLoading] = useState(true)
@@ -48,28 +46,26 @@ const DoctorRevenueReport = () => {
 
   // Check access control on mount
   useEffect(() => {
-    if (!user) {
-      // Not authenticated - redirect to login
-      sessionStorage.setItem('redirectAfterLogin', '/reports?tab=doctor-revenue')
-      navigate('/login')
+    if (!user || !userProfile) {
+      // Not authenticated or profile not loaded - handled by App.jsx auth flow
       return
     }
 
     // Check role-based access
-    if (!['admin', 'doctor'].includes(user.role)) {
-      // Unauthorized role - redirect to dashboard
-      console.warn(`Unauthorized access attempt by user ${user.id} with role ${user.role}`)
-      navigate('/dashboard')
+    if (!['admin', 'doctor'].includes(userProfile.role)) {
+      // Unauthorized role - navigate to dashboard using custom navigation
+      console.warn(`Unauthorized access attempt by user ${user.id} with role ${userProfile.role}`)
+      window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'dashboard' }))
       return
     }
-  }, [user, navigate])
+  }, [user, userProfile])
 
   // Load report data when date range changes
   useEffect(() => {
-    if (user && ['admin', 'doctor'].includes(user.role)) {
+    if (user && userProfile && ['admin', 'doctor'].includes(userProfile.role)) {
       loadReportData()
     }
-  }, [dateRange, user])
+  }, [dateRange, user, userProfile])
 
   /**
    * Load report data from service layer
@@ -87,7 +83,7 @@ const DoctorRevenueReport = () => {
       }
 
       // Apply role-based filtering
-      const doctorId = user.role === 'doctor' ? user.doctor_id : null
+      const doctorId = userProfile.role === 'doctor' ? userProfile.doctor_id : null
 
       // Fetch report data
       const data = await getRevenueReport(formattedDateRange, doctorId)

@@ -158,8 +158,6 @@ const KPICard = ({
 
   const handleViewDetails = () => {
     // This would typically open a modal or navigate to a detailed view
-    // For now, we'll just log the action
-    console.log(`View details for ${title}`)
     alert(`Detailed view for ${title} would open here.\n\nCurrent: ${formatValue(value)}\nPrevious: ${formatValue(previousValue)}\nChange: ${formattedTrendPercentage}`)
     setIsMenuOpen(false)
   }

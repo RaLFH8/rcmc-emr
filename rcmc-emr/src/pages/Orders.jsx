@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Search, Filter, Download, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react'
+import { Search, Filter, Download, CheckCircle, Clock, XCircle, AlertCircle, Printer } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const Orders = () => {
   const { userProfile } = useAuth()
@@ -20,7 +20,6 @@ const Orders = () => {
     
     // Subscribe to real-time updates
     const subscription = db.subscribeToOrders((payload) => {
-      console.log('Order update received:', payload)
       loadOrders() // Reload orders on any change
     })
 
@@ -30,6 +29,14 @@ const Orders = () => {
       }
     }
   }, [statusFilter, priorityFilter, typeFilter])
+
+  // Separate debounced effect for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadOrders()
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
 
   const loadOrders = async () => {
     try {
@@ -154,10 +161,76 @@ const Orders = () => {
     }
   }
 
+  const handlePrintOrder = (order) => {
+    const printWindow = window.open('', '_blank')
+    const priorityLabel = priorityLabels[order.priority] || order.priority
+    const typeLabel = orderTypeLabels[order.order_type] || order.order_type
+    const statusLabel = order.status.replace('_', ' ')
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Order Details - ${order.id.slice(0, 8)}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 32px; color: #1e293b; }
+          h1 { font-size: 22px; margin-bottom: 4px; }
+          .subtitle { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #475569; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin-bottom: 10px; }
+          .row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 13px; }
+          .label { color: #64748b; }
+          .value { font-weight: 600; }
+          .details-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; font-size: 13px; margin-top: 4px; }
+          .badge { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; }
+          .audit { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; }
+          @media print { body { padding: 16px; } }
+        </style>
+      </head>
+      <body>
+        <h1>Medical Order</h1>
+        <div class="subtitle">Order ID: ${order.id.slice(0, 8)}... &nbsp;|&nbsp; Printed: ${new Date().toLocaleString()}</div>
+
+        <div class="section">
+          <div class="section-title">Patient Information</div>
+          <div class="row"><span class="label">Name:</span><span class="value">${order.patient?.first_name || ''} ${order.patient?.last_name || ''}</span></div>
+          <div class="row"><span class="label">Patient Number:</span><span class="value">${order.patient?.patient_number || 'N/A'}</span></div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Order Information</div>
+          <div class="row"><span class="label">Type:</span><span class="value">${typeLabel}</span></div>
+          <div class="row"><span class="label">Priority:</span><span class="value">${priorityLabel}</span></div>
+          <div class="row"><span class="label">Status:</span><span class="value">${statusLabel}</span></div>
+          <div class="label" style="font-size:12px;margin-top:8px;">Details:</div>
+          <div class="details-box">${order.order_details || ''}</div>
+          ${order.notes ? `<div class="label" style="font-size:12px;margin-top:8px;">Notes:</div><div class="details-box">${order.notes}</div>` : ''}
+        </div>
+
+        <div class="audit">
+          <div class="section-title">Audit Trail</div>
+          <div class="row"><span class="label">Created By:</span><span class="value">Dr. ${order.created_by_user?.full_name || `${order.created_by_user?.first_name || ''} ${order.created_by_user?.last_name || ''}`.trim() || 'Unknown'}</span></div>
+          <div class="row"><span class="label">Created At:</span><span class="value">${new Date(order.created_at).toLocaleString()}</span></div>
+          ${order.completed_at ? `
+          <div class="row"><span class="label">Completed By:</span><span class="value">${order.completed_by_user?.first_name || ''} ${order.completed_by_user?.last_name || ''}</span></div>
+          <div class="row"><span class="label">Completed At:</span><span class="value">${new Date(order.completed_at).toLocaleString()}</span></div>` : ''}
+          ${order.cancelled_at ? `
+          <div class="row"><span class="label">Cancelled By:</span><span class="value">${order.cancelled_by_user?.first_name || ''} ${order.cancelled_by_user?.last_name || ''}</span></div>
+          <div class="row"><span class="label">Cancelled At:</span><span class="value">${new Date(order.cancelled_at).toLocaleString()}</span></div>` : ''}
+          ${order.appointment_id ? `<div class="row"><span class="label">Source:</span><span class="value">Consultation (ID: ${order.appointment_id.slice(0, 8)}...)</span></div>` : ''}
+        </div>
+      </body>
+      </html>
+    `)
+    printWindow.document.close()
+    printWindow.focus()
+    printWindow.print()
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <HeartbeatLoader message="Loading orders..." />
+        <SkeletonLoader variant="list" rows={5} message="Loading orders..." />
       </div>
     )
   }
@@ -313,6 +386,11 @@ const Orders = () => {
                         <div className="text-sm text-slate-900 max-w-md truncate">
                           {order.order_details}
                         </div>
+                        {order.appointment_id && (
+                          <div className="text-xs text-teal-600 font-semibold mt-0.5">
+                            📋 From SOAP Note
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${priorityColors[order.priority]}`}>
@@ -370,15 +448,24 @@ const Orders = () => {
                   Order ID: {selectedOrder.id.slice(0, 8)}...
                 </p>
               </div>
-              <button
-                onClick={() => {
-                  setShowDetailModal(false)
-                  setSelectedOrder(null)
-                }}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                <XCircle size={24} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handlePrintOrder(selectedOrder)}
+                  className="flex items-center gap-2 px-4 py-2 bg-teal-500 text-white rounded-lg font-semibold hover:bg-teal-600 transition-colors text-sm"
+                >
+                  <Printer size={16} />
+                  Print
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDetailModal(false)
+                    setSelectedOrder(null)
+                  }}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <XCircle size={24} />
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
@@ -453,7 +540,7 @@ const Orders = () => {
                   <div className="flex justify-between">
                     <span className="text-blue-700">Created By:</span>
                     <span className="font-semibold text-blue-900">
-                      Dr. {selectedOrder.created_by_user?.first_name} {selectedOrder.created_by_user?.last_name}
+                      Dr. {selectedOrder.created_by_user?.full_name || `${selectedOrder.created_by_user?.first_name || ''} ${selectedOrder.created_by_user?.last_name || ''}`.trim() || 'Unknown'}
                     </span>
                   </div>
                   <div className="flex justify-between">

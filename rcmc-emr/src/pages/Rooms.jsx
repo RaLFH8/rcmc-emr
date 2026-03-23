@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Bed, Plus, Edit2, Trash2, X, CheckCircle, XCircle } from 'lucide-react'
 import { db } from '../lib/supabase'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const Rooms = () => {
   const [rooms, setRooms] = useState([])
@@ -213,7 +213,7 @@ const Rooms = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full bg-white rounded-xl shadow-sm p-12 text-center">
-            <HeartbeatLoader message="Loading rooms..." />
+            <SkeletonLoader variant="card" columns={3} message="Loading rooms..." />
           </div>
         ) : filteredRooms.length === 0 ? (
           <div className="col-span-full bg-white rounded-xl shadow-sm p-12 text-center">

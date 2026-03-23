@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
-import { Calendar, Download, FileText, TrendingUp, Users, DollarSign, Package, Activity, RefreshCw, Heart, UserCheck } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Calendar, Download, FileText, TrendingUp, Users, DollarSign, Package, Activity, RefreshCw, Heart, UserCheck, CreditCard, Tag, ChevronUp, ChevronDown } from 'lucide-react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from 'recharts'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 import KPICard from '../components/analytics/KPICard'
 import PatientDistributionChart from '../components/analytics/PatientDistributionChart'
 import RevenueTrendChart from '../components/analytics/RevenueTrendChart'
@@ -12,9 +13,10 @@ import DateRangeFilter from '../components/analytics/DateRangeFilter'
 import useAnalytics from '../hooks/useAnalytics'
 import exportService from '../services/exportService'
 import DoctorRevenueReport from './DoctorRevenueReport'
+import FinancialTab from '../components/billing/FinancialTab'
 
 const Reports = () => {
-  const { user } = useAuth()
+  const { user, userProfile } = useAuth()
   const [activeTab, setActiveTab] = useState('analytics')
   const [loading, setLoading] = useState(false)
   const [dateRange, setDateRange] = useState({
@@ -28,8 +30,8 @@ const Reports = () => {
   }, [activeTab, dateRange])
 
   const loadReportData = async () => {
-    // Skip loading for analytics and doctor-revenue tabs - they manage their own data
-    if (activeTab === 'analytics' || activeTab === 'doctor-revenue') {
+    // Skip loading for tabs that manage their own data
+    if (activeTab === 'analytics' || activeTab === 'doctor-revenue' || activeTab === 'financial') {
       return
     }
     
@@ -62,38 +64,111 @@ const Reports = () => {
   }
 
   const loadFinancialReport = async () => {
-    const billingData = await db.getBilling(1000, 0, '', 'All')
+    const billingData = await db.getBilling(5000, 0, '', 'All')
     
-    // Filter by date range
+    // Filter by date range — compare date-only strings to avoid timezone/time issues
     const filtered = billingData.filter(bill => {
-      const billDate = new Date(bill.created_at).toISOString().split('T')[0]
+      if (!bill.created_at) return false
+      const billDate = bill.created_at.substring(0, 10)
       return billDate >= dateRange.start && billDate <= dateRange.end
     })
 
     const totalRevenue = filtered.reduce((sum, bill) => sum + parseFloat(bill.total_amount || 0), 0)
     const totalPaid = filtered.reduce((sum, bill) => sum + parseFloat(bill.amount_paid || 0), 0)
-    const outstanding = filtered.reduce((sum, bill) => sum + parseFloat(bill.remaining_balance || 0), 0)
+    const totalDiscounts = filtered.reduce((sum, bill) => sum + parseFloat(bill.discount_amount || 0), 0)
+    const outstanding = totalRevenue - totalPaid
 
+    // Payment method breakdown (Cash, GCash, Maya, Bank Transfer, Others)
+    const PAYMENT_METHODS = ['Cash', 'GCash', 'Maya', 'Bank Transfer']
     const byMethod = {}
     const byStatus = {}
-    
+    const discountByType = {}
+
     filtered.forEach(bill => {
-      const method = bill.payment_method || 'Cash'
+      const rawMethod = (bill.payment_method || 'Cash').trim()
+      const method = PAYMENT_METHODS.includes(rawMethod) ? rawMethod : 'Others'
       const status = bill.payment_status || 'Pending'
-      
-      byMethod[method] = (byMethod[method] || 0) + parseFloat(bill.amount_paid || 0)
+      const discountType = bill.discount_type || null
+      const discountAmt = parseFloat(bill.discount_amount || 0)
+
+      byMethod[method] = (byMethod[method] || 0) + parseFloat(bill.total_amount || 0)
       byStatus[status] = (byStatus[status] || 0) + 1
+
+      if (discountType && discountAmt > 0) {
+        if (!discountByType[discountType]) {
+          discountByType[discountType] = { amount: 0, count: 0 }
+        }
+        discountByType[discountType].amount += discountAmt
+        discountByType[discountType].count += 1
+      }
     })
+
+    // Build cash flow chart data grouped by date within range
+    const cashFlowByDate = {}
+    filtered.forEach(bill => {
+      const date = bill.created_at.substring(0, 10)
+      const rawMethod = (bill.payment_method || 'Cash').trim()
+      const method = PAYMENT_METHODS.includes(rawMethod) ? rawMethod : 'Others'
+      if (!cashFlowByDate[date]) {
+        cashFlowByDate[date] = { date, Cash: 0, GCash: 0, Maya: 0, 'Bank Transfer': 0, Others: 0 }
+      }
+      cashFlowByDate[date][method] = (cashFlowByDate[date][method] || 0) + parseFloat(bill.total_amount || 0)
+    })
+    const cashFlowData = Object.values(cashFlowByDate).sort((a, b) => a.date.localeCompare(b.date))
+
+    // --- Period summaries ---
+    const today = new Date()
+    const todayStr = today.toISOString().split('T')[0]
+
+    const dailyBills = billingData.filter(b => b.created_at && b.created_at.substring(0, 10) === todayStr)
+    const dailyIncome = dailyBills.reduce((sum, b) => sum + parseFloat(b.amount_paid || 0), 0)
+
+    const weekAgo = new Date(today)
+    weekAgo.setDate(today.getDate() - 6)
+    const weekAgoStr = weekAgo.toISOString().split('T')[0]
+    const weeklyBills = billingData.filter(b => {
+      if (!b.created_at) return false
+      const d = b.created_at.substring(0, 10)
+      return d >= weekAgoStr && d <= todayStr
+    })
+    const weeklyIncome = weeklyBills.reduce((sum, b) => sum + parseFloat(b.amount_paid || 0), 0)
+
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0]
+    const monthlyBills = billingData.filter(b => {
+      if (!b.created_at) return false
+      const d = b.created_at.substring(0, 10)
+      return d >= monthStart && d <= todayStr
+    })
+    const monthlyIncome = monthlyBills.reduce((sum, b) => sum + parseFloat(b.amount_paid || 0), 0)
+
+    const yearStart = `${today.getFullYear()}-01-01`
+    const yearlyBills = billingData.filter(b => {
+      if (!b.created_at) return false
+      const d = b.created_at.substring(0, 10)
+      return d >= yearStart && d <= todayStr
+    })
+    const yearlyIncome = yearlyBills.reduce((sum, b) => sum + parseFloat(b.amount_paid || 0), 0)
 
     setReportData({
       totalRevenue,
       totalPaid,
       outstanding,
+      totalDiscounts,
       transactionCount: filtered.length,
-      avgTransaction: filtered.length > 0 ? totalPaid / filtered.length : 0,
+      avgTransaction: filtered.length > 0 ? totalRevenue / filtered.length : 0,
       byMethod,
       byStatus,
-      transactions: filtered
+      discountByType,
+      cashFlowData,
+      transactions: filtered,
+      dailyIncome,
+      weeklyIncome,
+      monthlyIncome,
+      yearlyIncome,
+      dailyCount: dailyBills.length,
+      weeklyCount: weeklyBills.length,
+      monthlyCount: monthlyBills.length,
+      yearlyCount: yearlyBills.length,
     })
   }
 
@@ -313,7 +388,7 @@ const Reports = () => {
     { id: 'appointments', label: 'Appointments', icon: Calendar },
     { id: 'inventory', label: 'Inventory', icon: Package },
     // Only show Doctor Revenue Sharing tab to admin and doctor roles
-    ...(user && ['admin', 'doctor'].includes(user.role) 
+    ...(userProfile && ['admin', 'doctor'].includes(userProfile.role) 
       ? [{ id: 'doctor-revenue', label: 'Doctor Revenue Sharing', icon: UserCheck }]
       : [])
   ]
@@ -382,9 +457,9 @@ const Reports = () => {
       <div className="bg-white rounded-xl shadow-sm p-6">
         {loading ? (
           <div className="py-12">
-            <HeartbeatLoader message="Generating report..." />
+            <SkeletonLoader variant="list" rows={5} message="Generating report..." />
           </div>
-        ) : !reportData && activeTab !== 'analytics' && activeTab !== 'doctor-revenue' ? (
+        ) : !reportData && activeTab !== 'analytics' && activeTab !== 'doctor-revenue' && activeTab !== 'financial' ? (
           <div className="py-12 text-center">
             <FileText size={48} className="mx-auto text-slate-300 mb-4" />
             <p className="text-slate-600 font-semibold">No data available</p>
@@ -393,7 +468,7 @@ const Reports = () => {
         ) : (
           <>
             {activeTab === 'analytics' && <AnalyticsDashboard />}
-            {activeTab === 'financial' && <FinancialReport data={reportData} />}
+            {activeTab === 'financial' && <FinancialTab />}
             {activeTab === 'patients' && <PatientReport data={reportData} />}
             {activeTab === 'appointments' && <AppointmentReport data={reportData} />}
             {activeTab === 'inventory' && <InventoryReport data={reportData} />}
@@ -499,7 +574,7 @@ const AnalyticsDashboard = () => {
   if (loading) {
     return (
       <div className="py-12">
-        <HeartbeatLoader message="Loading analytics..." />
+        <SkeletonLoader variant="dashboard" message="Loading analytics..." />
       </div>
     );
   }
@@ -557,7 +632,7 @@ const AnalyticsDashboard = () => {
       />
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
         <KPICard
           title="Total Patients"
           value={metrics?.totalPatients?.current || 0}
@@ -589,6 +664,22 @@ const AnalyticsDashboard = () => {
           format="currency"
           icon={DollarSign}
           iconColor="bg-green-500"
+        />
+        <KPICard
+          title="Net Revenue"
+          value={metrics?.netRevenue?.current || 0}
+          previousValue={metrics?.netRevenue?.previous || 0}
+          format="currency"
+          icon={Tag}
+          iconColor="bg-emerald-500"
+        />
+        <KPICard
+          title="Accounts Receivable"
+          value={metrics?.accountsReceivable?.current || 0}
+          previousValue={metrics?.accountsReceivable?.previous || 0}
+          format="currency"
+          icon={CreditCard}
+          iconColor="bg-orange-500"
         />
       </div>
 
@@ -702,25 +793,57 @@ const FinancialReport = ({ data }) => {
     )
   }
 
+  const fmt = (n) => (n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 flex flex-col">
-          <p className="text-sm text-teal-700 font-semibold mb-1">Total Revenue</p>
-          <p className="text-2xl font-bold text-teal-900">₱{(data.totalRevenue || 0).toLocaleString()}</p>
+      {/* Period Income Summary */}
+      <div>
+        <h3 className="text-base font-semibold text-slate-700 mb-3">Income Summary</h3>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-sky-50 to-sky-100 rounded-xl p-4">
+            <p className="text-xs text-sky-600 font-semibold uppercase tracking-wide mb-1">Today</p>
+            <p className="text-2xl font-bold text-sky-900">₱{fmt(data.dailyIncome)}</p>
+            <p className="text-xs text-sky-600 mt-1">{data.dailyCount || 0} transaction{data.dailyCount !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl p-4">
+            <p className="text-xs text-violet-600 font-semibold uppercase tracking-wide mb-1">This Week</p>
+            <p className="text-2xl font-bold text-violet-900">₱{fmt(data.weeklyIncome)}</p>
+            <p className="text-xs text-violet-600 mt-1">{data.weeklyCount || 0} transaction{data.weeklyCount !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4">
+            <p className="text-xs text-teal-600 font-semibold uppercase tracking-wide mb-1">This Month</p>
+            <p className="text-2xl font-bold text-teal-900">₱{fmt(data.monthlyIncome)}</p>
+            <p className="text-xs text-teal-600 mt-1">{data.monthlyCount || 0} transaction{data.monthlyCount !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4">
+            <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide mb-1">This Year</p>
+            <p className="text-2xl font-bold text-amber-900">₱{fmt(data.yearlyIncome)}</p>
+            <p className="text-xs text-amber-600 mt-1">{data.yearlyCount || 0} transaction{data.yearlyCount !== 1 ? 's' : ''}</p>
+          </div>
         </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 flex flex-col">
-          <p className="text-sm text-green-700 font-semibold mb-1">Total Collected</p>
-          <p className="text-2xl font-bold text-green-900">₱{(data.totalPaid || 0).toLocaleString()}</p>
-        </div>
-        <div className="bg-gradient-to-br from-amber-50 to-amber-100 rounded-xl p-4 flex flex-col">
-          <p className="text-sm text-amber-700 font-semibold mb-1">Outstanding</p>
-          <p className="text-2xl font-bold text-amber-900">₱{(data.outstanding || 0).toLocaleString()}</p>
-        </div>
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 flex flex-col">
-          <p className="text-sm text-blue-700 font-semibold mb-1">Transactions</p>
-          <p className="text-2xl font-bold text-blue-900">{data.transactionCount || 0}</p>
+      </div>
+
+      {/* Date Range Summary Cards */}
+      <div>
+        <h3 className="text-base font-semibold text-slate-700 mb-3">Selected Date Range</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-4 flex flex-col">
+            <p className="text-sm text-teal-700 font-semibold mb-1">Total Billed</p>
+            <p className="text-2xl font-bold text-teal-900">₱{fmt(data.totalRevenue)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 flex flex-col">
+            <p className="text-sm text-green-700 font-semibold mb-1">Total Collected</p>
+            <p className="text-2xl font-bold text-green-900">₱{fmt(data.totalPaid)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 flex flex-col">
+            <p className="text-sm text-red-700 font-semibold mb-1">Outstanding</p>
+            <p className="text-2xl font-bold text-red-900">₱{fmt(data.outstanding)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 flex flex-col">
+            <p className="text-sm text-blue-700 font-semibold mb-1">Transactions</p>
+            <p className="text-2xl font-bold text-blue-900">{data.transactionCount || 0}</p>
+          </div>
         </div>
       </div>
 
@@ -731,7 +854,7 @@ const FinancialReport = ({ data }) => {
           {Object.entries(data.byMethod).map(([method, amount]) => (
             <div key={method} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
               <span className="font-medium text-slate-700">{method}</span>
-              <span className="text-lg font-bold text-slate-900">₱{amount.toLocaleString()}</span>
+              <span className="text-lg font-bold text-slate-900">₱{fmt(amount)}</span>
             </div>
           ))}
         </div>

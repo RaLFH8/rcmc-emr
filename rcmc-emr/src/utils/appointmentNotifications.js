@@ -43,8 +43,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
               phone: appointmentData.phone || appointmentData.mobile_number || 'not provided'
             }
           })
-        } else {
-          console.log('✅ Email notification sent successfully')
         }
       } catch (error) {
         results.warnings.push('Email notification error')
@@ -62,12 +60,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
       }
     } else {
       results.warnings.push('No valid email address provided')
-      console.warn('[Appointment Notification Warning]', {
-        timestamp: new Date().toISOString(),
-        patientName: `${appointmentData.first_name} ${appointmentData.last_name}`,
-        message: 'Skipping email notification: No valid email address',
-        providedEmail: appointmentData.email || 'not provided'
-      })
     }
     
     // Send SMS notification
@@ -93,8 +85,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
               phone: appointmentData.phone || appointmentData.mobile_number || 'not provided'
             }
           })
-        } else {
-          console.log('✅ SMS notification sent successfully')
         }
       } catch (error) {
         results.warnings.push('SMS notification error')
@@ -112,12 +102,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
       }
     } else {
       results.warnings.push('No phone number provided')
-      console.warn('[Appointment Notification Warning]', {
-        timestamp: new Date().toISOString(),
-        patientName: `${appointmentData.first_name} ${appointmentData.last_name}`,
-        message: 'Skipping SMS notification: No phone number',
-        providedPhone: appointmentData.phone || appointmentData.mobile_number || 'not provided'
-      })
     }
   }
   
@@ -145,8 +129,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
               phone: appointmentData.phone || appointmentData.mobile_number || 'not provided'
             }
           })
-        } else {
-          console.log('✅ SMS notification sent successfully')
         }
       } catch (error) {
         results.warnings.push('SMS notification error')
@@ -164,12 +146,6 @@ export async function sendAppointmentNotifications(appointmentData, source) {
       }
     } else {
       results.warnings.push('No phone number provided')
-      console.warn('[Appointment Notification Warning]', {
-        timestamp: new Date().toISOString(),
-        patientName: `${appointmentData.first_name} ${appointmentData.last_name}`,
-        message: 'Skipping SMS notification: No phone number',
-        providedPhone: appointmentData.phone || appointmentData.mobile_number || 'not provided'
-      })
     }
   }
   

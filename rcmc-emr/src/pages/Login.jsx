@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Activity } from 'lucide-react'
 
 const Login = () => {
   const [email, setEmail] = useState('')
@@ -26,11 +25,18 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 to-blue-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-teal-400 to-teal-600 rounded-xl flex items-center justify-center shadow-sm">
-            <Activity className="w-7 h-7 text-white" />
+        <div className="flex items-center justify-center gap-4 mb-8">
+          <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden">
+            <img 
+              src="/RCMC_LOGO-removebg-preview.png" 
+              alt="Rizalcare Medical Clinic Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">MediLens EMR</h1>
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-slate-900 leading-tight">RIZALCARE</h1>
+            <p className="text-lg font-semibold text-slate-700 leading-tight">MEDICAL CLINIC</p>
+          </div>
         </div>
 
         <h2 className="text-xl font-semibold text-slate-900 mb-2">Welcome back</h2>
@@ -80,14 +86,7 @@ const Login = () => {
           </button>
         </form>
 
-        <div className="mt-6 pt-6 border-t border-slate-200">
-          <p className="text-xs text-slate-500 text-center">
-            Demo Accounts:<br />
-            Admin: admin@rcmc.com / admin123<br />
-            Doctor: doctor@rcmc.com / doctor123<br />
-            Receptionist: receptionist@rcmc.com / receptionist123
-          </p>
-        </div>
+
       </div>
     </div>
   )

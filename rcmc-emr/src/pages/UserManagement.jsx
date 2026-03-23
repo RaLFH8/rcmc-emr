@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { UserPlus, Edit2, Trash2, Key, Mail, User, Shield } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const UserManagement = () => {
   const [users, setUsers] = useState([])
@@ -191,7 +191,7 @@ const UserManagement = () => {
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <HeartbeatLoader message="Loading users..." />
+        <SkeletonLoader variant="table" message="Loading users..." />
       </div>
     )
   }

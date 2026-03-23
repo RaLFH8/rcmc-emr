@@ -2,13 +2,21 @@ import { useEffect, useState, useMemo } from 'react'
 import { Plus, User, X, CheckCircle, PlayCircle, FileText, History, Globe, UserPlus } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 import { sendAppointmentNotifications } from '../utils/appointmentNotifications'
 import { exportToCSV, copyToClipboard } from '../utils/exportService'
 import CalendarView from '../components/CalendarView'
 import FilterBar from '../components/FilterBar'
 import OrderReviewPanel from '../components/OrderReviewPanel'
 import { parseOrders } from '../utils/orderParser'
+
+// Format a Date to local YYYY-MM-DD (timezone-safe)
+const toLocalDateStr = (d) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 const Appointments = () => {
   const { userProfile } = useAuth()
@@ -17,7 +25,8 @@ const Appointments = () => {
   const [doctors, setDoctors] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [submitting, setSubmitting] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()))
   const [viewMode, setViewMode] = useState('calendar') // 'calendar' or 'queue'
   const [selectedWeek, setSelectedWeek] = useState(new Date())
   const [selectedDoctor, setSelectedDoctor] = useState('all')
@@ -26,7 +35,7 @@ const Appointments = () => {
   const [formData, setFormData] = useState({
     patient_id: '',
     doctor_id: '',
-    appointment_date: new Date().toISOString().split('T')[0],
+    appointment_date: toLocalDateStr(new Date()),
     appointment_time: '',
     reason: '',
     status: 'Scheduled',
@@ -58,20 +67,30 @@ const Appointments = () => {
   const [detailsAppointment, setDetailsAppointment] = useState(null)
   const [error, setError] = useState(null)
   const [extractedOrders, setExtractedOrders] = useState([])
+  const [patientSearch, setPatientSearch] = useState('')
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false)
   const [confirmedOrders, setConfirmedOrders] = useState([])
   const [showOrderReview, setShowOrderReview] = useState(false)
 
   useEffect(() => {
     loadData()
-    // Auto-set doctor filter and view mode if user is a doctor
-    if (userProfile?.role === 'doctor' && userProfile?.id) {
-      setSelectedDoctor(userProfile.id.toString())
+    // Set view mode based on role (doctor filter is set after doctors load)
+    if (userProfile?.role === 'doctor') {
       setViewMode('queue')
     } else {
-      // Non-doctor users default to calendar view
       setViewMode('calendar')
     }
   }, [selectedDate, selectedWeek, userProfile])
+
+  // After doctors are loaded, resolve the logged-in doctor's record ID
+  useEffect(() => {
+    if (userProfile?.role === 'doctor' && userProfile?.id && doctors.length > 0) {
+      const doctorRecord = doctors.find(d => d.user_id === userProfile.id)
+      if (doctorRecord) {
+        setSelectedDoctor(doctorRecord.id.toString())
+      }
+    }
+  }, [doctors, userProfile])
 
   // Separate effect for view mode changes - don't refetch data
   useEffect(() => {
@@ -150,27 +169,10 @@ const Appointments = () => {
       setLoading(true)
       setError(null)
       
-      // Determine date range based on view mode
-      let appointmentsData
-      if (viewMode === 'calendar') {
-        // Calendar view: fetch week range (Monday to Saturday)
-        const weekStart = getWeekStart(selectedWeek)
-        const weekEnd = new Date(weekStart)
-        weekEnd.setDate(weekStart.getDate() + 5) // Saturday
-        
-        // Fetch appointments for the week range
-        const startDateStr = weekStart.toISOString().split('T')[0]
-        const endDateStr = weekEnd.toISOString().split('T')[0]
-        
-        // Fetch all appointments in the week range
-        const allAppointments = await db.getAppointments()
-        appointmentsData = allAppointments.filter(apt => {
-          return apt.appointment_date >= startDateStr && apt.appointment_date <= endDateStr
-        })
-      } else {
-        // Queue view: fetch single day
-        appointmentsData = await db.getAppointments(selectedDate)
-      }
+      // Always fetch all appointments — client-side filtering handles date/mode scoping.
+      // This avoids stale-closure issues where viewMode may not reflect the latest state
+      // when loadData is called from a useEffect.
+      const allAppointments = await db.getAppointments()
       
       // Fetch patients and doctors in parallel
       const [patientsData, doctorsData] = await Promise.all([
@@ -178,7 +180,7 @@ const Appointments = () => {
         db.getDoctors()
       ])
       
-      setAppointments(appointmentsData)
+      setAppointments(allAppointments)
       setPatients(patientsData)
       setDoctors(doctorsData)
     } catch (error) {
@@ -191,71 +193,82 @@ const Appointments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    try {
-      let patientId = formData.patient_id
+    if (submitting) return
 
-      // If creating new patient, create patient first
+    // For existing patients we can do optimistic UI immediately.
+    // For new patients we must create the patient record first (needs a real ID),
+    // so we still await that before closing the modal.
+    const tempId = `temp-${Date.now()}`
+
+    try {
+      setSubmitting(true)
+      let patientId = formData.patient_id
+      let patientRecord = isNewPatient ? newPatientData : patients.find(p => p.id === patientId)
+
+      // New patient: must persist first to get a real patient ID
       if (isNewPatient) {
-        console.log('Creating new patient for appointment...')
-        
-        // Add default emergency contact fields
         const patientDataWithDefaults = {
           ...newPatientData,
           emergency_contact_name: newPatientData.emergency_contact_name || 'To be updated',
           emergency_contact_number: newPatientData.emergency_contact_number || newPatientData.contact_number
         }
-        
         const newPatient = await db.addPatient(patientDataWithDefaults)
-        console.log('Patient created:', newPatient)
         patientId = newPatient.id
+        patientRecord = newPatient
       }
 
-      // Create appointment with patient ID
-      await db.addAppointment({
+      // Build optimistic appointment record for instant UI feedback
+      const doctor = doctors.find(d => d.id === formData.doctor_id)
+      const optimisticAppointment = {
+        id: tempId,
         ...formData,
         patient_id: patientId,
-        booking_source: 'walk-in' // Staff-created appointments are walk-in by default
-      })
-
-      // Get patient contact info for notification
-      let patient
-      if (isNewPatient) {
-        patient = newPatientData
-      } else {
-        patient = patients.find(p => p.id === patientId)
+        booking_source: 'walk-in',
+        status: 'Scheduled',
+        patient: patientRecord,
+        doctor: doctor || null,
+        _optimistic: true
       }
 
-      // Send SMS notification (non-blocking) for walk-in appointments
-      if (patient && (patient.contact_number || patient.phone)) {
-        const doctor = doctors.find(d => d.id === formData.doctor_id)
+      // Add to UI immediately and close modal — feels instant
+      setAppointments(prev => [optimisticAppointment, ...prev])
+      closeModal()
+
+      // Persist to DB in background
+      const savedAppointment = await db.addAppointment({
+        ...formData,
+        patient_id: patientId,
+        booking_source: 'walk-in'
+      })
+
+      // Replace temp record with real one from DB
+      setAppointments(prev =>
+        prev.map(apt => apt.id === tempId ? { ...savedAppointment, patient: patientRecord, doctor: doctor || null } : apt)
+      )
+
+      // SMS notification — non-blocking
+      if (patientRecord && (patientRecord.contact_number || patientRecord.phone)) {
         const notificationData = {
-          first_name: patient.first_name,
-          last_name: patient.last_name,
-          mobile_number: patient.contact_number || patient.phone,
-          phone: patient.contact_number || patient.phone,
+          first_name: patientRecord.first_name,
+          last_name: patientRecord.last_name,
+          mobile_number: patientRecord.contact_number || patientRecord.phone,
+          phone: patientRecord.contact_number || patientRecord.phone,
           appointment_date: formData.appointment_date,
           appointment_time: formData.appointment_time,
           reason: formData.reason,
           doctor: doctor
         }
-
-        const notifResults = await sendAppointmentNotifications(notificationData, 'walk-in')
-
-        if (notifResults.warnings.length > 0) {
-          console.warn('SMS notification warning:', notifResults.warnings)
-        }
-
-        if (notifResults.smsSent) {
-          console.log('✅ Walk-in appointment SMS notification sent')
-        }
+        sendAppointmentNotifications(notificationData, 'walk-in').catch(err =>
+          console.warn('SMS notification failed (non-critical):', err)
+        )
       }
-      
-      await loadData()
-      closeModal()
-      alert('Appointment scheduled successfully!')
     } catch (error) {
       console.error('Error saving appointment:', error)
+      // Roll back optimistic record on failure
+      setAppointments(prev => prev.filter(apt => apt.id !== tempId))
       alert('Failed to save appointment: ' + error.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -272,10 +285,12 @@ const Appointments = () => {
   const closeModal = () => {
     setShowModal(false)
     setIsNewPatient(false)
+    setPatientSearch('')
+    setShowPatientDropdown(false)
     setFormData({
       patient_id: '',
       doctor_id: '',
-      appointment_date: new Date().toISOString().split('T')[0],
+      appointment_date: toLocalDateStr(new Date()),
       appointment_time: '',
       reason: '',
       status: 'Scheduled',
@@ -342,11 +357,7 @@ const Appointments = () => {
     if (!selectedAppointment) return
     
     try {
-      // DEBUG: Log SOAP data being saved
-      console.log('=== SAVE SOAP DEBUG ===')
-      console.log('Saving SOAP data:', soapData)
-      console.log('For appointment:', selectedAppointment.id)
-      
+      const alreadyInProgress = selectedAppointment.status === 'In Progress'
       // Update appointment status to In Progress AND persist SOAP data to database
       await db.updateAppointment(selectedAppointment.id, { 
         status: 'In Progress',
@@ -362,9 +373,7 @@ const Appointments = () => {
       // Close SOAP modal (but keep soapData in state!)
       setShowSoapModal(false)
       
-      console.log('SOAP data saved successfully to database:', soapData)
-      
-      alert('SOAP note saved. Patient moved to In Progress.')
+      alert(alreadyInProgress ? 'SOAP note updated.' : 'SOAP note saved. Patient moved to In Progress.')
     } catch (error) {
       console.error('Error saving SOAP note:', error)
       alert('Failed to save SOAP note: ' + error.message)
@@ -375,14 +384,8 @@ const Appointments = () => {
     if (!selectedAppointment) return
     
     try {
-      // DEBUG: Log current SOAP data
-      console.log('=== COMPLETE CONSULTATION DEBUG ===')
-      console.log('Current soapData state:', soapData)
-      console.log('Selected appointment:', selectedAppointment)
-      
       // Fetch latest appointment data from database to get SOAP notes
       const latestAppointment = await db.getAppointmentById(selectedAppointment.id)
-      console.log('Latest appointment from database:', latestAppointment)
       
       // Use database values if state is empty (handles re-render case)
       const finalSoapData = {
@@ -392,8 +395,6 @@ const Appointments = () => {
         plan: soapData.plan || latestAppointment.soap_plan || ''
       }
       
-      console.log('Final SOAP data (merged from state and database):', finalSoapData)
-      
       // Validate required fields
       if (!finalSoapData.assessment || !finalSoapData.assessment.trim()) {
         alert('Assessment (Diagnosis) is required to complete consultation')
@@ -402,17 +403,26 @@ const Appointments = () => {
 
       // Parse orders from treatment plan
       const parsedOrders = parseOrders(finalSoapData.plan)
-      console.log('Parsed orders from treatment plan:', parsedOrders)
 
-      // If orders detected, show review panel
-      if (parsedOrders.length > 0) {
-        setExtractedOrders(parsedOrders)
-        setConfirmedOrders(parsedOrders) // Initialize confirmed orders with parsed orders
+      // If plan has content, always show order review panel
+      // If parser found structured orders, use those; otherwise create one order from the full plan text
+      if (finalSoapData.plan && finalSoapData.plan.trim()) {
+        const ordersToReview = parsedOrders.length > 0
+          ? parsedOrders
+          : [{
+              type: 'procedure',
+              details: finalSoapData.plan.trim(),
+              priority: 'routine',
+              confidence: 1,
+              sourceText: finalSoapData.plan.trim()
+            }]
+        setExtractedOrders(ordersToReview)
+        setConfirmedOrders(ordersToReview)
         setShowOrderReview(true)
         return // Wait for order confirmation
       }
 
-      // No orders detected, proceed with completion
+      // No plan text, proceed with completion without orders
       await completeConsultationWithOrders([])
     } catch (error) {
       console.error('Error completing consultation:', error)
@@ -450,8 +460,6 @@ const Appointments = () => {
         completed_by: userProfile.id
       }
       
-      console.log('Creating consultation record:', consultationRecord)
-      
       // Create consultation record
       await db.addConsultation(consultationRecord)
 
@@ -467,7 +475,6 @@ const Appointments = () => {
           created_by: userProfile.id
         }))
 
-        console.log('Creating orders:', orderRecords)
         await db.createOrders(orderRecords)
       }
       
@@ -559,14 +566,33 @@ const Appointments = () => {
     }
   }
 
-  // Filter appointments based on selected doctor and status (memoized)
+  // Filter appointments based on selected doctor, status, and week (memoized)
   const filteredAppointments = useMemo(() => {
     return appointments.filter(apt => {
       const doctorMatch = selectedDoctor === 'all' || apt.doctor_id?.toString() === selectedDoctor
       const statusMatch = statusFilter === 'all' || apt.status === statusFilter
+
+      // In calendar mode, also filter to the selected week (Mon–Sat)
+      if (viewMode === 'calendar') {
+        const weekStart = getWeekStart(selectedWeek)
+        const weekEnd = new Date(weekStart)
+        weekEnd.setDate(weekStart.getDate() + 5)
+        const startStr = toLocalDateStr(weekStart)
+        const endStr = toLocalDateStr(weekEnd)
+        const aptDate = String(apt.appointment_date || '').slice(0, 10)
+        const weekMatch = aptDate >= startStr && aptDate <= endStr
+        return doctorMatch && statusMatch && weekMatch
+      }
+
+      // In queue mode, filter to the selected date
+      if (viewMode === 'queue') {
+        const aptDate = String(apt.appointment_date || '').slice(0, 10)
+        return doctorMatch && statusMatch && aptDate === selectedDate
+      }
+
       return doctorMatch && statusMatch
     })
-  }, [appointments, selectedDoctor, statusFilter])
+  }, [appointments, selectedDoctor, statusFilter, viewMode, selectedWeek, selectedDate])
 
   // Queue view - group by status (memoized)
   const queueAppointments = useMemo(() => ({
@@ -578,7 +604,7 @@ const Appointments = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <HeartbeatLoader message="Loading appointments..." />
+        <SkeletonLoader variant="table" rows={5} message="Loading appointments..." />
       </div>
     )
   }
@@ -668,6 +694,7 @@ const Appointments = () => {
                       {renderBookingSourceBadge(apt.booking_source || 'walk-in')}
                     </div>
                     <p className="text-xs text-slate-600 mb-3">{apt.reason}</p>
+                    {(userProfile?.role === 'doctor' || userProfile?.role === 'admin') && (
                     <button
                       onClick={() => handleStartConsultation(apt)}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold"
@@ -675,6 +702,7 @@ const Appointments = () => {
                       <PlayCircle size={16} />
                       Start Consultation
                     </button>
+                    )}
                   </div>
                 ))
               )}
@@ -712,6 +740,25 @@ const Appointments = () => {
                       {renderBookingSourceBadge(apt.booking_source || 'walk-in')}
                     </div>
                     <p className="text-xs text-slate-600 mb-3">{apt.reason}</p>
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={async () => {
+                          const latestApt = await db.getAppointmentById(apt.id)
+                          setSelectedAppointment(latestApt)
+                          setSoapData({
+                            subjective: latestApt.soap_subjective || latestApt.reason || '',
+                            objective: latestApt.soap_objective || '',
+                            assessment: latestApt.soap_assessment || '',
+                            plan: latestApt.soap_plan || ''
+                          })
+                          setShowSoapModal(true)
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold"
+                      >
+                        <FileText size={16} />
+                        Edit SOAP
+                      </button>
+                    </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => {
@@ -838,19 +885,57 @@ const Appointments = () => {
                     /* Select Existing Patient */
                     <div>
                       <label className="block text-sm font-semibold text-slate-700 mb-2">Select Patient *</label>
-                      <select
-                        required
-                        value={formData.patient_id}
-                        onChange={(e) => setFormData({...formData, patient_id: e.target.value})}
-                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      >
-                        <option value="">Select Patient</option>
-                        {patients.map((patient) => (
-                          <option key={patient.id} value={patient.id}>
-                            {patient.first_name} {patient.last_name} - {patient.patient_number}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search by name or patient number..."
+                          value={patientSearch}
+                          onChange={(e) => {
+                            setPatientSearch(e.target.value)
+                            setShowPatientDropdown(true)
+                            if (!e.target.value) setFormData({...formData, patient_id: ''})
+                          }}
+                          onFocus={() => setShowPatientDropdown(true)}
+                          onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        />
+                        {showPatientDropdown && (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-52 overflow-y-auto">
+                            {patients
+                              .filter(p => {
+                                const q = patientSearch.toLowerCase()
+                                return !q ||
+                                  `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
+                                  (p.patient_number || '').toLowerCase().includes(q)
+                              })
+                              .map(patient => (
+                                <div
+                                  key={patient.id}
+                                  onMouseDown={() => {
+                                    setFormData({...formData, patient_id: patient.id})
+                                    setPatientSearch(`${patient.first_name} ${patient.last_name} - ${patient.patient_number}`)
+                                    setShowPatientDropdown(false)
+                                  }}
+                                  className="px-4 py-2 cursor-pointer hover:bg-teal-50 text-sm text-slate-700"
+                                >
+                                  {patient.first_name} {patient.last_name}
+                                  <span className="text-slate-400 ml-2 text-xs">{patient.patient_number}</span>
+                                </div>
+                              ))
+                            }
+                            {patients.filter(p => {
+                              const q = patientSearch.toLowerCase()
+                              return !q ||
+                                `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
+                                (p.patient_number || '').toLowerCase().includes(q)
+                            }).length === 0 && (
+                              <div className="px-4 py-3 text-sm text-slate-400">No patients found</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {/* hidden required validation helper */}
+                      <input type="text" required readOnly value={formData.patient_id} className="sr-only" tabIndex={-1} />
                     </div>
                   ) : (
                     /* Add New Patient Form */
@@ -1005,9 +1090,10 @@ const Appointments = () => {
               <div className="flex gap-3 mt-6">
                 <button
                   type="submit"
-                  className="flex-1 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors"
+                  disabled={submitting}
+                  className="flex-1 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed disabled:pointer-events-none"
                 >
-                  Schedule Appointment
+                  {submitting ? 'Scheduling...' : 'Schedule Appointment'}
                 </button>
                 <button
                   type="button"
@@ -1540,7 +1626,7 @@ const Appointments = () => {
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                {(detailsAppointment.status === 'Scheduled' || detailsAppointment.status === 'Confirmed') && (
+                {(detailsAppointment.status === 'Scheduled' || detailsAppointment.status === 'Confirmed') && (userProfile?.role === 'doctor' || userProfile?.role === 'admin') && (
                   <button
                     onClick={() => {
                       setShowDetailsModal(false)

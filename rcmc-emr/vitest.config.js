@@ -6,7 +6,18 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
-    include: ['src/**/*.test.{js,jsx,ts,tsx}']
+    setupFiles: ['src/tests/setup.js'],
+    include: ['src/**/*.test.{js,jsx,ts,tsx}'],
+    // Property-based testing configuration
+    testTimeout: 30000, // Increased timeout for property tests
+    coverage: {
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        'src/tests/setup.ts',
+        'src/tests/generators/',
+        '**/*.d.ts'
+      ]
+    }
   }
 })

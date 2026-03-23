@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, DollarSign, Download, Eye, X, CreditCard, Calendar } from 'lucide-react'
+import { Plus, Search, DollarSign, Download, Eye, X, CreditCard, Calendar, Printer } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useBillingQueue } from '../context/BillingQueueContext'
 import { BillingQueue } from '../components/BillingQueue'
 import jsPDF from 'jspdf'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const Payments = () => {
   const { userProfile } = useAuth()
   const { lockPatient, unlockPatient, removeFromQueue } = useBillingQueue()
+  const [activeTab, setActiveTab] = useState('transactions')
   const [payments, setPayments] = useState([])
   const [patients, setPatients] = useState([])
   const [services, setServices] = useState([])
@@ -24,6 +25,8 @@ const Payments = () => {
     patient_id: '',
     total_amount: '',
     amount_paid: '',
+    cash_tendered: '',
+    change_given: 0,
     payment_method: 'Cash',
     payment_status: 'Pending',
     items: [],
@@ -225,10 +228,24 @@ const Payments = () => {
 
   // Update amount paid and auto-set status
   const handleAmountPaidChange = (value) => {
-    const newStatus = getAutoStatus(formData.total_amount, value)
+    const val_received = parseFloat(value) || 0
+    const val_total    = parseFloat(formData.total_amount) || 0
+    let capped_paid, change_given
+
+    if (val_received > val_total) {
+      capped_paid  = val_total
+      change_given = val_received - val_total
+    } else {
+      capped_paid  = val_received
+      change_given = 0
+    }
+
+    const newStatus = getAutoStatus(formData.total_amount, capped_paid)
     setFormData({
       ...formData,
-      amount_paid: value,
+      cash_tendered: value,
+      amount_paid: capped_paid > 0 ? capped_paid.toString() : '',
+      change_given,
       payment_status: newStatus
     })
   }
@@ -281,9 +298,10 @@ const Payments = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const totalAmount = parseFloat(formData.total_amount)
-      const amountPaid = parseFloat(formData.amount_paid || formData.total_amount)
-      const remainingBalance = totalAmount - amountPaid
+      const totalAmount      = parseFloat(formData.total_amount)
+      const cashTendered     = parseFloat(formData.cash_tendered || formData.amount_paid || formData.total_amount)
+      const amountPaid       = Math.min(cashTendered, totalAmount)
+      const remainingBalance = Math.max(0, totalAmount - amountPaid)
       
       // Auto-set status based on payment
       let status = formData.payment_status
@@ -327,7 +345,14 @@ const Payments = () => {
 
   const handleStatusChange = async (id, newStatus) => {
     try {
-      await db.updateBilling(id, { payment_status: newStatus })
+      const payment = payments.find(p => p.id === id)
+      const updates = { payment_status: newStatus }
+      // When marking as Paid, clear the remaining balance and set amount_paid = total_amount
+      if (newStatus === 'Paid' && payment) {
+        updates.amount_paid = payment.total_amount
+        updates.remaining_balance = 0
+      }
+      await db.updateBilling(id, updates)
       await loadData()
     } catch (error) {
       console.error('Error updating status:', error)
@@ -342,6 +367,8 @@ const Payments = () => {
       patient_id: '',
       total_amount: '',
       amount_paid: '',
+      cash_tendered: '',
+      change_given: 0,
       payment_method: 'Cash',
       payment_status: 'Pending',
       items: [],
@@ -419,9 +446,10 @@ const Payments = () => {
     }
 
     try {
-      const totalAmount = parseFloat(formData.total_amount)
-      const amountPaid = parseFloat(formData.amount_paid || formData.total_amount)
-      const remainingBalance = totalAmount - amountPaid
+      const totalAmount      = parseFloat(formData.total_amount)
+      const cashTendered     = parseFloat(formData.cash_tendered || formData.amount_paid || formData.total_amount)
+      const amountPaid       = Math.min(cashTendered, totalAmount)
+      const remainingBalance = Math.max(0, totalAmount - amountPaid)
       
       // Auto-set status based on payment
       let status = formData.payment_status
@@ -723,6 +751,92 @@ const Payments = () => {
     }
   }
 
+  const handlePrint = (payment) => {
+    try {
+      const totalAmount = parseFloat(payment.total_amount || payment.amount || 0)
+      const amountPaid = parseFloat(payment.amount_paid !== undefined && payment.amount_paid !== null ? payment.amount_paid : totalAmount)
+      const remainingBalance = parseFloat(payment.remaining_balance || 0)
+      const change = amountPaid > totalAmount ? amountPaid - totalAmount : 0
+
+      const formatAmount = (amount) =>
+        parseFloat(amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+
+      const dateStr = new Date(payment.date).toLocaleDateString('en-US', {
+        month: 'short', day: '2-digit', year: 'numeric'
+      })
+
+      const itemsHtml = payment.items && payment.items.length > 0
+        ? payment.items.map((item, i) => `
+            <tr>
+              <td style="padding:4px 0">${i + 1}. ${item.name || item.description || 'Item'}</td>
+              <td style="padding:4px 0;text-align:right">PHP ${formatAmount(item.amount || item.price || 0)}</td>
+            </tr>`).join('')
+        : `<tr><td colspan="2" style="padding:4px 0;color:#888;font-style:italic">No items listed</td></tr>`
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Receipt ${payment.receipt_number}</title>
+  <style>
+    @media print { body { margin: 0; } }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #333; max-width: 400px; margin: 0 auto; padding: 16px; }
+    .clinic-name { font-size: 16px; font-weight: bold; color: #14b8a6; text-align: center; }
+    .clinic-sub { font-size: 10px; color: #555; text-align: center; margin: 2px 0; }
+    .divider { border-top: 1px solid #14b8a6; margin: 8px 0; }
+    .title { font-size: 14px; font-weight: bold; text-align: center; margin: 8px 0; }
+    .row { display: flex; justify-content: space-between; margin: 3px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    .section-label { font-weight: bold; font-size: 11px; margin: 10px 0 4px; }
+    .total-row td { font-weight: bold; padding: 4px 0; }
+    .paid-row td { color: #16a34a; font-weight: bold; padding: 4px 0; }
+    .balance-row td { color: #dc2626; font-weight: bold; padding: 4px 0; }
+    .change-row td { color: #2563eb; font-weight: bold; padding: 4px 0; }
+    .footer { font-size: 10px; color: #888; text-align: center; margin-top: 16px; font-style: italic; }
+    .sig-row { display: flex; justify-content: space-between; margin-top: 24px; }
+    .sig-line { border-top: 1px solid #333; width: 120px; text-align: center; padding-top: 4px; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div class="clinic-name">RIZALCARE MEDICAL CLINIC</div>
+  <div class="clinic-sub">IPDL8 Bldg. GF #25G Dikit St. Brgy Bagumbayan Pililla, Rizal</div>
+  <div class="clinic-sub">Tel: 0938-775-1504 / 0976-273-9445</div>
+  <div class="divider"></div>
+  <div class="title">ACKNOWLEDGEMENT RECEIPT</div>
+  <div class="row"><span>Receipt No: <b>${payment.receipt_number || 'N/A'}</b></span><span>Date: ${dateStr}</span></div>
+  <div class="row"><span>Patient: <b>${payment.patient_name || 'N/A'}</b></span><span>ID: ${payment.patient_number || 'N/A'}</span></div>
+  <div class="row"><span>Payment: ${payment.payment_method || 'Cash'}</span><span>Status: ${payment.status || 'Pending'}</span></div>
+  <div class="section-label">ITEMS / SERVICES</div>
+  <div class="divider" style="margin:0 0 4px"></div>
+  <table>${itemsHtml}</table>
+  <div class="divider"></div>
+  <table>
+    <tr class="total-row"><td>TOTAL AMOUNT:</td><td style="text-align:right">PHP ${formatAmount(totalAmount)}</td></tr>
+    <tr class="paid-row"><td>AMOUNT PAID:</td><td style="text-align:right">PHP ${formatAmount(amountPaid)}</td></tr>
+    ${change > 0 ? `<tr class="change-row"><td>CHANGE:</td><td style="text-align:right">PHP ${formatAmount(change)}</td></tr>` : ''}
+    ${remainingBalance > 0 ? `<tr class="balance-row"><td>BALANCE DUE:</td><td style="text-align:right">PHP ${formatAmount(remainingBalance)}</td></tr>` : ''}
+  </table>
+  <div style="font-size:10px;color:#555;font-style:italic;margin-top:6px">Amount Paid: ${numberToWords(amountPaid)}</div>
+  ${payment.notes ? `<div class="section-label">Notes:</div><div style="font-size:11px;color:#555">${payment.notes}</div>` : ''}
+  <div class="sig-row">
+    <div class="sig-line">Received By</div>
+    <div class="sig-line">Authorized Signature</div>
+  </div>
+  <div class="footer">This is a computer-generated receipt. Thank you!</div>
+</body>
+</html>`
+
+      const printWindow = window.open('', '_blank', 'width=500,height=700')
+      printWindow.document.write(html)
+      printWindow.document.close()
+      printWindow.focus()
+      printWindow.print()
+      printWindow.close()
+    } catch (error) {
+      console.error('Error printing receipt:', error)
+      alert('Failed to print receipt: ' + error.message)
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Paid':
@@ -751,9 +865,10 @@ const Payments = () => {
 
 
   const stats = {
-    total: payments.reduce((sum, p) => sum + p.amount, 0),
-    paid: payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.amount, 0),
-    pending: payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.amount, 0),
+    total: payments.reduce((sum, p) => sum + p.amount_paid, 0),
+    paid: payments.filter(p => p.status === 'Paid').reduce((sum, p) => sum + p.amount_paid, 0),
+    pending: payments.filter(p => p.status === 'Pending').reduce((sum, p) => sum + p.total_amount, 0),
+    unpaid: payments.filter(p => p.status === 'Partial' || p.status === 'Pending').reduce((sum, p) => sum + p.remaining_balance, 0),
     count: payments.length
   }
 
@@ -774,6 +889,28 @@ const Payments = () => {
         </button>
       </div>
 
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-slate-200">
+        {[
+          { key: 'transactions', label: 'Transactions' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`px-5 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px ${
+              activeTab === key
+                ? 'border-teal-500 text-teal-600'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Transactions Tab panel */}
+      {activeTab === 'transactions' && (
+        <>
       {/* Billing Queue Section */}
       <BillingQueue onSelectPatient={handleSelectPatient} />
 
@@ -785,6 +922,7 @@ const Payments = () => {
             <DollarSign size={20} className="text-slate-400" />
           </div>
           <p className="text-3xl font-bold text-slate-900">₱{stats.total.toLocaleString()}</p>
+          <p className="text-xs text-slate-400 mt-1">Amount collected</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
@@ -795,10 +933,11 @@ const Payments = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-slate-600 font-semibold">Pending</p>
-            <DollarSign size={20} className="text-yellow-500" />
+            <p className="text-sm text-slate-600 font-semibold">Unpaid Balance</p>
+            <DollarSign size={20} className="text-red-500" />
           </div>
-          <p className="text-3xl font-bold text-yellow-600">₱{stats.pending.toLocaleString()}</p>
+          <p className="text-3xl font-bold text-red-600">₱{stats.unpaid.toLocaleString()}</p>
+          <p className="text-xs text-slate-400 mt-1">Partial &amp; pending</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
@@ -844,7 +983,7 @@ const Payments = () => {
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-12 text-center">
-            <HeartbeatLoader message="Loading payments..." />
+            <SkeletonLoader variant="table" message="Loading payments..." />
           </div>
         ) : filteredPayments.length === 0 ? (
           <div className="p-12 text-center">
@@ -860,7 +999,8 @@ const Payments = () => {
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Receipt #</th>
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Patient</th>
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Date</th>
-                  <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount</th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Amount Paid</th>
+                  <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Unpaid Balance</th>
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Payment</th>
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Status</th>
                   <th className="text-left py-4 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Actions</th>
@@ -885,7 +1025,17 @@ const Payments = () => {
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <p className="text-lg font-bold text-slate-900">₱{payment.amount.toLocaleString()}</p>
+                      <p className="text-lg font-bold text-slate-900">₱{payment.amount_paid.toLocaleString()}</p>
+                      {payment.status !== 'Paid' && payment.total_amount !== payment.amount_paid && (
+                        <p className="text-xs text-slate-400">of ₱{payment.total_amount.toLocaleString()}</p>
+                      )}
+                    </td>
+                    <td className="py-4 px-6">
+                      {payment.remaining_balance > 0 ? (
+                        <p className="text-sm font-semibold text-red-600">₱{payment.remaining_balance.toLocaleString()}</p>
+                      ) : (
+                        <p className="text-sm text-slate-400">—</p>
+                      )}
                     </td>
                     <td className="py-4 px-6">
                       <p className="text-sm text-slate-700">{payment.payment_method}</p>
@@ -905,6 +1055,15 @@ const Payments = () => {
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-2">
+                        {payment.status === 'Partial' && (
+                          <button
+                            onClick={() => handleStatusChange(payment.id, 'Paid')}
+                            className="px-3 py-1 text-xs font-semibold bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                            title="Clear partial — mark as fully paid"
+                          >
+                            Mark Paid
+                          </button>
+                        )}
                         <button
                           onClick={() => handleView(payment)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -919,6 +1078,13 @@ const Payments = () => {
                         >
                           <Download size={18} />
                         </button>
+                        <button
+                          onClick={() => handlePrint(payment)}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Print Receipt"
+                        >
+                          <Printer size={18} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -928,6 +1094,9 @@ const Payments = () => {
           </div>
         )}
       </div>
+
+        </> // end transactions tab
+      )}
 
       {/* New Payment Modal */}
       {showModal && (
@@ -1073,9 +1242,14 @@ const Payments = () => {
                                 onClick={() => handleItemSelect(item)}
                                 className="px-3 py-2 hover:bg-teal-50 cursor-pointer border-b border-slate-100 last:border-b-0"
                               >
-                                <div className="font-semibold text-slate-900 text-sm">{item.name}</div>
+                                <div className="font-semibold text-slate-900 text-sm flex items-center gap-2">
+                                  {item.name}
+                                  {/suturing|burn care/i.test(item.name) && (
+                                    <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-normal">Variable Price</span>
+                                  )}
+                                </div>
                                 <div className="text-xs text-slate-600">
-                                  ₱{parseFloat(item.price).toLocaleString()}
+                                  {/suturing|burn care/i.test(item.name) ? 'Price varies — enter manually' : `₱${parseFloat(item.price).toLocaleString()}`}
                                   {currentItem.type === 'inventory' && item.stock && (
                                     <span className="ml-2">({item.stock} {item.unit} available)</span>
                                   )}
@@ -1105,8 +1279,19 @@ const Payments = () => {
                       </button>
                     </div>
                     {currentItem.id && (
-                      <div className="text-xs text-slate-600 bg-white px-3 py-2 rounded-lg">
-                        Price: ₱{parseFloat(currentItem.price).toLocaleString()} × {currentItem.quantity} = ₱{(parseFloat(currentItem.price) * parseInt(currentItem.quantity || 1)).toLocaleString()}
+                      <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg">
+                        <span className="text-xs text-slate-600">Price (₱):</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={currentItem.price}
+                          onChange={(e) => setCurrentItem({...currentItem, price: e.target.value})}
+                          className="w-28 px-2 py-1 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                        />
+                        <span className="text-xs text-slate-600">
+                          × {currentItem.quantity} = ₱{(parseFloat(currentItem.price || 0) * parseInt(currentItem.quantity || 1)).toLocaleString()}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1193,7 +1378,7 @@ const Payments = () => {
                     type="number"
                     min="0"
                     step="0.01"
-                    value={formData.amount_paid}
+                    value={formData.cash_tendered}
                     onChange={(e) => handleAmountPaidChange(e.target.value)}
                     placeholder="Enter amount paid (leave empty for full payment)"
                     className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
@@ -1201,11 +1386,20 @@ const Payments = () => {
                   <p className="text-xs text-slate-500 mt-1">Status will auto-update based on payment amount</p>
                 </div>
 
-                {formData.total_amount && formData.amount_paid && parseFloat(formData.amount_paid) < parseFloat(formData.total_amount) && (
+                {formData.total_amount && formData.cash_tendered && parseFloat(formData.cash_tendered) < parseFloat(formData.total_amount) && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <p className="text-sm font-semibold text-amber-900 mb-1">Remaining Balance</p>
                     <p className="text-2xl font-bold text-amber-600">
-                      ₱{(parseFloat(formData.total_amount) - parseFloat(formData.amount_paid || 0)).toLocaleString()}
+                      ₱{(parseFloat(formData.total_amount) - parseFloat(formData.cash_tendered || 0)).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+
+                {formData.change_given > 0 && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-sm font-semibold text-blue-900 mb-1">Change to Return</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ₱{parseFloat(formData.change_given).toLocaleString()}
                     </p>
                   </div>
                 )}

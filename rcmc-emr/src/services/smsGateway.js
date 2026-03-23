@@ -13,7 +13,6 @@ const TEXTBEE_API_KEY = import.meta.env.VITE_TEXTBEE_API_KEY
 export const sendSMS = async (phoneNumber, message) => {
   // Check if SMS is configured
   if (!TEXTBEE_URL) {
-    console.warn('⚠️ TextBee not configured. Set VITE_TEXTBEE_URL in .env')
     return { success: false, error: 'TextBee not configured' }
   }
 
@@ -33,7 +32,6 @@ export const sendSMS = async (phoneNumber, message) => {
     const data = await response.json()
     
     if (data.success) {
-      console.log('✅ SMS sent successfully via TextBee')
       return { success: true, messageId: data.id || 'textbee-' + Date.now() }
     } else {
       console.error('❌ SMS failed:', data)

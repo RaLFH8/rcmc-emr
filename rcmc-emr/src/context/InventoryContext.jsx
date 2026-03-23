@@ -13,6 +13,9 @@ export const useInventory = () => {
 
 export const InventoryProvider = ({ children }) => {
   const [inventory, setInventory] = useState([])
+  const [summaries, setSummaries] = useState([])
+  const [expiringBatches, setExpiringBatches] = useState([])
+  const [expiredBatches, setExpiredBatches] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -22,23 +25,31 @@ export const InventoryProvider = ({ children }) => {
   const loadInventory = async () => {
     try {
       setLoading(true)
-      // Load from Supabase database
-      const data = await db.getInventory()
+      const [data, summaryData, expiringData, expiredData] = await Promise.all([
+        db.getInventory(),
+        db.getInventorySummary(),
+        db.getExpiringInventory(),
+        db.getExpiredInventory()
+      ])
       setInventory(data)
+      setSummaries(summaryData)
+      setExpiringBatches(expiringData)
+      setExpiredBatches(expiredData)
     } catch (error) {
       console.error('Error loading inventory from database:', error)
-      // Fallback to empty array if database fails
       setInventory([])
+      setSummaries([])
+      setExpiringBatches([])
+      setExpiredBatches([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Function to deduct stock when medicine is added to bill
   const deductStock = async (medicineId, quantity) => {
     try {
       const updated = await db.deductStock(medicineId, quantity)
-      setInventory(prevInventory => 
+      setInventory(prevInventory =>
         prevInventory.map(item => item.id === medicineId ? updated : item)
       )
     } catch (error) {
@@ -47,11 +58,10 @@ export const InventoryProvider = ({ children }) => {
     }
   }
 
-  // Function to add stock (for restocking)
   const addStock = async (medicineId, quantity) => {
     try {
       const updated = await db.addStock(medicineId, quantity)
-      setInventory(prevInventory => 
+      setInventory(prevInventory =>
         prevInventory.map(item => item.id === medicineId ? updated : item)
       )
     } catch (error) {
@@ -63,6 +73,9 @@ export const InventoryProvider = ({ children }) => {
   const value = {
     inventory,
     setInventory,
+    summaries,
+    expiringBatches,
+    expiredBatches,
     deductStock,
     addStock,
     loading,

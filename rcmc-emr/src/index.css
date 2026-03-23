@@ -10,7 +10,6 @@
 
 html, body {
   height: 100%;
-  overflow: hidden;
 }
 
 body {
@@ -21,7 +20,6 @@ body {
 
 #root {
   min-height: 100%;
-  overflow: hidden;
 }
 
 /* Custom scrollbar */
@@ -59,6 +57,20 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Darker input borders app-wide */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+select,
+textarea {
+  border-color: #cbd5e1 !important; /* slate-300, up from slate-200 */
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+select:focus,
+textarea:focus {
+  border-color: #94a3b8 !important; /* slate-400 on focus */
+  outline-color: #94a3b8;
 }
 
 /* Smooth transitions */
@@ -128,15 +140,6 @@ body {
 }
 
 /* Loading screen animations */
-@keyframes heartbeat-line {
-  0% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -500;
-  }
-}
-
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -148,13 +151,6 @@ body {
   }
 }
 
-.heartbeat-line {
-  stroke-dasharray: 500;
-  stroke-dashoffset: 0;
-  animation: heartbeat-line 3s linear infinite;
-  filter: drop-shadow(0 0 4px rgba(20, 184, 166, 0.5));
-}
-
 .animate-fade-in {
   animation: fade-in 0.6s ease-out forwards;
 }
@@ -162,5 +158,29 @@ body {
 .animate-fade-in-delay {
   animation: fade-in 0.6s ease-out 0.3s forwards;
   opacity: 0;
+}
+
+/* Shimmer animation for skeleton loaders */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.animate-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.5) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.5s ease-in-out infinite;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import analyticsService from '../services/analyticsService';
+import analyticsService, { clearCache } from '../services/analyticsService';
 
 /**
  * Custom hook for analytics dashboard data management
@@ -86,9 +86,10 @@ export function useAnalytics(dateRange) {
   }, [dateRange]);
 
   /**
-   * Manual refresh function
+   * Manual refresh function - clears cache to ensure fresh data
    */
   const refresh = useCallback(() => {
+    clearCache();
     fetchData();
   }, [fetchData]);
 

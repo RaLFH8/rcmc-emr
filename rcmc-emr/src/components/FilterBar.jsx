@@ -26,7 +26,7 @@ const FilterBar = ({
               viewMode === 'calendar' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-600'
             }`}
           >
-            Calendar View
+            Schedule
           </button>
           <button
             onClick={() => onViewModeChange('queue')}

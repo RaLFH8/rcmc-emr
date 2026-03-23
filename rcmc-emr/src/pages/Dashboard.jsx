@@ -3,10 +3,10 @@ import { Users, Stethoscope, Calendar, Bed, RefreshCw, Download, Search, Filter,
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import StatCard from '../components/StatCard'
 import { db, supabase } from '../lib/supabase'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 import { useAuth } from '../context/AuthContext'
 
-const Dashboard = () => {
+const Dashboard = ({ setCurrentPage }) => {
   const { userProfile } = useAuth()
   
   const [stats, setStats] = useState({
@@ -445,12 +445,18 @@ const Dashboard = () => {
           })
       ])
       
+      // For doctors, scope the patient count to only their own patients
+      let displayPatientCount = statsData.totalPatients || 0
+      if (userProfile?.role === 'doctor' && userProfile?.doctor_id) {
+        displayPatientCount = await db.getDoctorPatientCount(userProfile.doctor_id).catch(() => statsData.totalPatients || 0)
+      }
+
       setStats({
-        totalPatients: statsData.totalPatients || 0,
+        totalPatients: displayPatientCount,
         totalDoctors: statsData.totalDoctors || 0,
         bookAppointments: statsData.monthlyAppointments || 0,
         roomAvailability: roomData.available || 0,
-        patientTrend: calculateTrend(statsData.totalPatients || 0, prevPatients.count || 0),
+        patientTrend: calculateTrend(displayPatientCount, prevPatients.count || 0),
         doctorTrend: calculateTrend(statsData.totalDoctors || 0, prevDoctors.count || 0),
         appointmentTrend: calculateTrend(statsData.monthlyAppointments || 0, prevAppointments.count || 0),
         roomTrend: calculateTrend(roomData.available || 0, Math.floor((prevRooms.count || 0) * 0.8)) // Estimate previous availability
@@ -516,7 +522,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <HeartbeatLoader message="Loading dashboard..." />
+        <SkeletonLoader variant="dashboard" message="Loading dashboard..." />
       </div>
     )
   }
@@ -753,7 +759,7 @@ const Dashboard = () => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold text-slate-900">Schedule</h3>
-              <button className="text-sm text-teal-600 hover:text-teal-700">View All</button>
+              <button className="text-sm text-teal-600 hover:text-teal-700" onClick={() => setCurrentPage?.('appointments')}>View All</button>
             </div>
 
             <div className="space-y-3">

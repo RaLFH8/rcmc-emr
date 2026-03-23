@@ -2,7 +2,28 @@ import { useEffect, useState } from 'react'
 import { Plus, Search, Edit2, Trash2, X, User, Phone, Mail, Stethoscope, MessageSquare, QrCode, Download } from 'lucide-react'
 import { db, supabase } from '../lib/supabase'
 import { generateDoctorQR, downloadQRCode, generateBatchQRCodes } from '../utils/qrGenerator'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
+
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
+function deserializeSchedule(jsonb) {
+  return Array.from({ length: 7 }, (_, i) => {
+    const day = jsonb?.[String(i)] ?? jsonb?.[i]
+    if (!day || typeof day !== 'object') return { enabled: false, start: 8, end: 17 }
+    const start = day.start ?? day.startTime ?? day.from ?? 8
+    const end = day.end ?? day.endTime ?? day.to ?? 17
+    return { enabled: true, start: Number(start), end: Number(end) }
+  })
+}
+
+function serializeSchedule(uiSchedule) {
+  const result = {}
+  uiSchedule.forEach((day, i) => {
+    if (day.enabled) result[String(i)] = { start: day.start, end: day.end }
+  })
+  return Object.keys(result).length > 0 ? result : null
+}
 
 const Doctors = () => {
   const [doctors, setDoctors] = useState([])
@@ -17,6 +38,7 @@ const Doctors = () => {
   const [showQRModal, setShowQRModal] = useState(false)
   const [qrCodeData, setQRCodeData] = useState(null)
   const [generatingQR, setGeneratingQR] = useState(false)
+  const [scheduleUI, setScheduleUI] = useState(deserializeSchedule(null))
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -24,7 +46,6 @@ const Doctors = () => {
     license_number: '',
     contact_number: '',
     email: '',
-    schedule: '',
     consultation_fee: '',
     status: 'Active'
   })
@@ -49,23 +70,30 @@ const Doctors = () => {
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
+      const serializedSchedule = serializeSchedule(scheduleUI)
       // Prepare data with proper type conversion
       const dataToSave = {
         ...formData,
+        schedule: serializedSchedule,
         consultation_fee: formData.consultation_fee === '' ? null : parseFloat(formData.consultation_fee)
       }
 
       if (editingDoctor) {
-        const { error } = await supabase
+        const { data: updated, error } = await supabase
           .from('doctors')
           .update(dataToSave)
           .eq('id', editingDoctor.id)
+          .select()
         
         if (error) throw error
+        if (!updated || updated.length === 0) {
+          throw new Error('Update was blocked — no rows returned. Check Supabase RLS policies for the doctors table.')
+        }
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('doctors')
           .insert([dataToSave])
+          .select()
         
         if (error) throw error
       }
@@ -79,6 +107,7 @@ const Doctors = () => {
 
   const handleEdit = (doctor) => {
     setEditingDoctor(doctor)
+    setScheduleUI(deserializeSchedule(doctor.schedule))
     setFormData({
       first_name: doctor.first_name,
       last_name: doctor.last_name,
@@ -86,7 +115,6 @@ const Doctors = () => {
       license_number: doctor.license_number || '',
       contact_number: doctor.contact_number || '',
       email: doctor.email || '',
-      schedule: doctor.schedule || '',
       consultation_fee: doctor.consultation_fee || '',
       status: doctor.status
     })
@@ -113,6 +141,7 @@ const Doctors = () => {
   const closeModal = () => {
     setShowModal(false)
     setEditingDoctor(null)
+    setScheduleUI(deserializeSchedule(null))
     setFormData({
       first_name: '',
       last_name: '',
@@ -120,7 +149,6 @@ const Doctors = () => {
       license_number: '',
       contact_number: '',
       email: '',
-      schedule: '',
       consultation_fee: '',
       status: 'Active'
     })
@@ -300,7 +328,7 @@ const Doctors = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <HeartbeatLoader message="Loading doctors..." />
+        <SkeletonLoader variant="card" columns={3} message="Loading doctors..." />
       </div>
     )
   }
@@ -391,7 +419,21 @@ const Doctors = () => {
               )}
               {doctor.schedule && (
                 <div className="text-sm text-slate-600">
-                  <span className="font-semibold">Schedule:</span> {doctor.schedule}
+                  <span className="font-semibold">Schedule:</span>{' '}
+                  {Object.entries(doctor.schedule)
+                    .filter(([day]) => !isNaN(Number(day)) && Number(day) >= 0 && Number(day) <= 6)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .map(([day, hours]) => {
+                      if (!hours || typeof hours !== 'object') return null
+                      const start = hours.start ?? hours.startTime ?? hours.from
+                      const end = hours.end ?? hours.endTime ?? hours.to
+                      if (start == null || end == null) return null
+                      const dayName = DAY_NAMES[Number(day)]
+                      if (!dayName) return null
+                      return `${dayName} ${String(start).padStart(2,'0')}:00–${String(end).padStart(2,'0')}:00`
+                    })
+                    .filter(Boolean)
+                    .join(', ')}
                 </div>
               )}
               {doctor.consultation_fee && (
@@ -546,13 +588,51 @@ const Doctors = () => {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Schedule</label>
-                  <input
-                    type="text"
-                    value={formData.schedule}
-                    onChange={(e) => setFormData({...formData, schedule: e.target.value})}
-                    placeholder="e.g., Mon-Fri 9AM-5PM"
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
+                  <div className="border border-slate-200 rounded-xl p-3 space-y-1">
+                    {DAY_NAMES.map((name, i) => (
+                      <div key={i} className="flex items-center gap-3 py-1">
+                        <input
+                          type="checkbox"
+                          id={`day-${i}`}
+                          checked={scheduleUI[i].enabled}
+                          onChange={(e) => {
+                            const updated = [...scheduleUI]
+                            updated[i] = { ...updated[i], enabled: e.target.checked }
+                            setScheduleUI(updated)
+                          }}
+                          className="w-4 h-4 accent-teal-500"
+                        />
+                        <label htmlFor={`day-${i}`} className="w-10 text-sm font-medium text-slate-700 cursor-pointer">{name}</label>
+                        {scheduleUI[i].enabled && (
+                          <>
+                            <select
+                              value={scheduleUI[i].start}
+                              onChange={(e) => {
+                                const updated = [...scheduleUI]
+                                updated[i] = { ...updated[i], start: Number(e.target.value) }
+                                setScheduleUI(updated)
+                              }}
+                              className="px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            >
+                              {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+                            </select>
+                            <span className="text-sm text-slate-500">to</span>
+                            <select
+                              value={scheduleUI[i].end}
+                              onChange={(e) => {
+                                const updated = [...scheduleUI]
+                                updated[i] = { ...updated[i], end: Number(e.target.value) }
+                                setScheduleUI(updated)
+                              }}
+                              className="px-2 py-1 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            >
+                              {HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+                            </select>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -610,7 +690,7 @@ const Doctors = () => {
             <div className="p-6">
               {loadingFeedback ? (
                 <div className="flex items-center justify-center py-12">
-                  <HeartbeatLoader message="Loading feedback..." />
+                  <SkeletonLoader variant="list" rows={3} message="Loading feedback..." />
                 </div>
               ) : feedbackData.length === 0 ? (
                 <div className="text-center py-12">
@@ -718,7 +798,7 @@ const Doctors = () => {
             <div className="p-6">
               {generatingQR ? (
                 <div className="flex items-center justify-center py-12">
-                  <HeartbeatLoader message="Generating QR code..." />
+                  <SkeletonLoader variant="card" columns={1} message="Generating QR code..." />
                 </div>
               ) : qrCodeData ? (
                 <div className="space-y-4">

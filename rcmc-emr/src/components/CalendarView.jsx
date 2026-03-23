@@ -2,6 +2,14 @@ import { Calendar as CalendarIcon } from 'lucide-react'
 import { memo } from 'react'
 
 const CalendarView = memo(({ appointments, selectedWeek, onAppointmentClick, currentTime, hasFilters }) => {
+  // Format a Date to local YYYY-MM-DD (avoids UTC offset shifting the date)
+  const toLocalDateStr = (d) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
   // Get week days (Monday through Saturday)
   const getWeekDays = (startDate) => {
     const days = []
@@ -22,20 +30,87 @@ const CalendarView = memo(({ appointments, selectedWeek, onAppointmentClick, cur
     return days
   }
 
-  // Get time slots (9 AM - 6 PM)
+  // Parse appointment_time string to 24h hour integer
+  // Handles: "9:00 AM", "14:30", "09:00", "18:35:00" (HH:MM:SS from Supabase)
+  const parseTimeToHour = (timeStr) => {
+    if (!timeStr) return -1
+    const str = timeStr.trim()
+    // 12-hour format: "9:00 AM", "12:30 PM"
+    const match12 = str.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+    if (match12) {
+      let h = parseInt(match12[1])
+      const isPM = match12[3].toUpperCase() === 'PM'
+      if (isPM && h !== 12) h += 12
+      if (!isPM && h === 12) h = 0
+      return h
+    }
+    // 24-hour format: "09:00", "14:30", or "18:35:00" (with seconds)
+    const match24 = str.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+    if (match24) return parseInt(match24[1])
+    return -1
+  }
+
+  // Normalize a time string to HH:MM (strips seconds if present)
+  const normalizeTime = (timeStr) => {
+    if (!timeStr) return ''
+    const str = timeStr.trim()
+    // Already HH:MM
+    if (/^\d{1,2}:\d{2}$/.test(str)) {
+      const [h, m] = str.split(':')
+      return h.padStart(2, '0') + ':' + m.padStart(2, '0')
+    }
+    // HH:MM:SS — strip seconds
+    const match = str.match(/^(\d{1,2}):(\d{2}):\d{2}$/)
+    if (match) return match[1].padStart(2, '0') + ':' + match[2].padStart(2, '0')
+    return str
+  }
+
+  // Get time slots dynamically based on actual appointment times
   const getTimeSlots = () => {
     const slots = []
-    for (let hour = 9; hour <= 18; hour++) {
+    let minHour = 7   // default start when no appointments
+    let maxHour = 19  // default end when no appointments
+    if (appointments && appointments.length > 0) {
+      const hours = appointments.map(apt => parseTimeToHour(apt.appointment_time)).filter(h => h >= 0)
+      if (hours.length > 0) {
+        minHour = Math.max(0, Math.min(...hours) - 1)
+        maxHour = Math.min(23, Math.max(...hours) + 1)
+      }
+    }
+    for (let hour = minHour; hour <= maxHour; hour++) {
       slots.push(`${hour.toString().padStart(2, '0')}:00`)
     }
     return slots
   }
 
+  // Normalize appointment_date to YYYY-MM-DD regardless of whether Supabase
+  // returns a full ISO timestamp ("2026-03-17T00:00:00+00:00") or plain date ("2026-03-17").
+  // We always take the first 10 chars to avoid timezone-shift issues when parsing through Date().
+  const normalizeDate = (dateVal) => {
+    if (!dateVal) return ''
+    return String(dateVal).slice(0, 10)
+  }
+
   // Get appointments for a specific day and time slot
   const getAppointmentsForSlot = (day, time) => {
-    const dateStr = day.toISOString().split('T')[0]
+    const dateStr = toLocalDateStr(day)
+    const slotHour = parseInt(time.split(':')[0])
     return appointments.filter(apt => {
-      return apt.appointment_date === dateStr && apt.appointment_time === time
+      const aptDate = normalizeDate(apt.appointment_date)
+      if (aptDate !== dateStr) return false
+      // Try exact match first (handles "09:00" == "09:00")
+      if (apt.appointment_time === time) return true
+      // Normalize stored time to HH:MM and try again (handles "9:00" vs "09:00")
+      if (apt.appointment_time) {
+        const parts = apt.appointment_time.split(':')
+        if (parts.length >= 2) {
+          const normalized = parts[0].padStart(2, '0') + ':' + parts[1].padStart(2, '0')
+          if (normalized === time) return true
+        }
+      }
+      // Fall back to hour-based match for 12h formats like "9:00 AM"
+      const aptHour = parseTimeToHour(apt.appointment_time)
+      return aptHour === slotHour
     })
   }
 
@@ -46,15 +121,18 @@ const CalendarView = memo(({ appointments, selectedWeek, onAppointmentClick, cur
     const now = new Date(currentTime)
     const slotDate = new Date(day)
     
-    // Check if same date
-    if (slotDate.toDateString() !== now.toDateString()) return false
+    // Check if same date using local date strings
+    if (toLocalDateStr(slotDate) !== toLocalDateStr(now)) return false
     
     // Check if current hour matches slot hour
     const slotHour = parseInt(time.split(':')[0])
     const currentHour = now.getHours()
     
-    // Only highlight if within business hours
-    if (currentHour < 9 || currentHour > 18) return false
+    // Only highlight if within the visible time slots range
+    const visibleSlots = getTimeSlots()
+    const firstHour = parseInt(visibleSlots[0])
+    const lastHour = parseInt(visibleSlots[visibleSlots.length - 1])
+    if (currentHour < firstHour || currentHour > lastHour) return false
     
     return currentHour === slotHour
   }

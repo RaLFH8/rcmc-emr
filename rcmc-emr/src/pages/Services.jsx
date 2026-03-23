@@ -1,18 +1,35 @@
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Search, Edit2, Trash2, X, Package, DollarSign, Activity, Download, Upload } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Search, Edit2, Trash2, X, Package, DollarSign, Activity, Upload, Download } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
-import { LabTestImportModal } from '../components/import/LabTestImportModal'
+import SkeletonLoader from '../components/SkeletonLoader'
+import ServicesCSVImportModal from '../components/services/ServicesCSVImportModal'
+
+const SERVICES_TEMPLATE_ROWS = [
+  'name,category,price,description,code,status',
+  'Complete Blood Count,Hematology,350,Full blood panel test,LAB-001,Active',
+  'Chest X-Ray,Diagnostic Services,500,Standard chest radiograph,DX-001,Active',
+  'IV Insertion,Nursing Procedures,150,Peripheral IV line insertion,,Active',
+]
+
+function downloadServicesTemplate() {
+  const blob = new Blob([SERVICES_TEMPLATE_ROWS.join('\n')], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'services_import_template.csv'
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 const Services = () => {
-  const { userProfile } = useAuth()
+  const { userProfile: _userProfile } = useAuth()
   const [services, setServices] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterCategory, setFilterCategory] = useState('All')
   const [showModal, setShowModal] = useState(false)
-  const [showImportModal, setShowImportModal] = useState(false)
   const [editingService, setEditingService] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
@@ -23,7 +40,15 @@ const Services = () => {
     status: 'Active'
   })
 
-  const categories = ['All', 'Consultation', 'Laboratory', 'Imaging', 'Procedure', 'Vaccination', 'Medication']
+  const categories = [
+    'All',
+    'Consultation',
+    'Laboratory',
+    'Imaging',
+    'Procedure',
+    'Therapy',
+    'Other',
+  ]
 
   useEffect(() => {
     loadServices()
@@ -110,51 +135,17 @@ const Services = () => {
     })
   }
 
-  // Export to CSV
-  const handleExport = () => {
-    const headers = ['ID', 'Name', 'Category', 'Price', 'Description', 'Status']
-    const csvData = services.map(service => [
-      service.id,
-      service.name,
-      service.category,
-      service.price,
-      service.description,
-      service.status
-    ])
-
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `services_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  }
 
   const getCategoryColor = (category) => {
-    switch (category) {
-      case 'Consultation':
-        return 'bg-blue-100 text-blue-700'
-      case 'Laboratory':
-        return 'bg-purple-100 text-purple-700'
-      case 'Imaging':
-        return 'bg-teal-100 text-teal-700'
-      case 'Procedure':
-        return 'bg-orange-100 text-orange-700'
-      case 'Vaccination':
-        return 'bg-green-100 text-green-700'
-      case 'Medication':
-        return 'bg-pink-100 text-pink-700'
-      default:
-        return 'bg-slate-100 text-slate-700'
+    const colors = {
+      'Consultation': 'bg-blue-100 text-blue-700',
+      'Laboratory': 'bg-purple-100 text-purple-700',
+      'Imaging': 'bg-indigo-100 text-indigo-700',
+      'Procedure': 'bg-orange-100 text-orange-700',
+      'Therapy': 'bg-green-100 text-green-700',
+      'Other': 'bg-slate-100 text-slate-700',
     }
+    return colors[category] || 'bg-slate-100 text-slate-700'
   }
 
   const filteredServices = services.filter(service => {
@@ -181,22 +172,19 @@ const Services = () => {
         </div>
         <div className="flex items-center gap-3">
           <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors shadow-sm"
+            onClick={downloadServicesTemplate}
+            className="flex items-center gap-2 px-5 py-3 border-2 border-slate-300 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition-colors"
           >
-            <Download size={20} />
-            Export CSV
+            <Download size={18} />
+            CSV Template
           </button>
-          {/* Only show import button for admin and staff */}
-          {(userProfile?.role === 'admin' || userProfile?.role === 'staff') && (
-            <button
-              onClick={() => setShowImportModal(true)}
-              className="flex items-center gap-2 px-4 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors shadow-sm"
-            >
-              <Upload size={20} />
-              Import Lab Tests
-            </button>
-          )}
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-5 py-3 border-2 border-teal-500 text-teal-600 rounded-xl font-semibold hover:bg-teal-50 transition-colors"
+          >
+            <Upload size={18} />
+            Import CSV
+          </button>
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors shadow-sm"
@@ -274,7 +262,7 @@ const Services = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {loading ? (
           <div className="col-span-full bg-white rounded-xl shadow-sm p-12 text-center">
-            <HeartbeatLoader message="Loading services..." />
+            <SkeletonLoader variant="table" message="Loading services..." />
           </div>
         ) : filteredServices.length === 0 ? (
           <div className="col-span-full bg-white rounded-xl shadow-sm p-12 text-center">
@@ -299,7 +287,11 @@ const Services = () => {
 
             <div className="flex items-center justify-between pt-4 border-t border-slate-100 mb-4">
               <span className="text-sm text-slate-600">Price</span>
-              <span className="text-2xl font-bold text-teal-600">₱{service.price.toLocaleString()}</span>
+              {/suturing|burn care/i.test(service.name) ? (
+                <span className="text-sm font-semibold text-amber-600 bg-amber-50 px-3 py-1 rounded-lg">Variable Price</span>
+              ) : (
+                <span className="text-2xl font-bold text-teal-600">₱{service.price.toLocaleString()}</span>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
@@ -377,8 +369,8 @@ const Services = () => {
                       <option value="Laboratory">Laboratory</option>
                       <option value="Imaging">Imaging</option>
                       <option value="Procedure">Procedure</option>
-                      <option value="Vaccination">Vaccination</option>
-                      <option value="Medication">Medication</option>
+                      <option value="Therapy">Therapy</option>
+                      <option value="Other">Other</option>
                     </select>
                   </div>
                   <div>
@@ -440,15 +432,13 @@ const Services = () => {
         </div>
       )}
 
-      {/* Import Modal */}
-      <LabTestImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onSuccess={() => {
-          loadServices();
-          setShowImportModal(false);
-        }}
-      />
+      {showImportModal && (
+        <ServicesCSVImportModal
+          onImportComplete={() => { setShowImportModal(false); loadServices() }}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
+
     </div>
   )
 }

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Walk-In Patient Registration Form – Rizalcare Medical Clinic</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 9.5pt;
+      color: #000;
+      background: #fff;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      margin: 0 auto;
+      padding: 10mm 14mm 8mm;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 2.5px solid #0d9488;
+      padding-bottom: 6px;
+      margin-bottom: 6px;
+    }
+
+    .header img {
+      width: 46px;
+      height: 46px;
+      object-fit: contain;
+    }
+
+    .header-text h1 { font-size: 13pt; color: #0d9488; font-weight: bold; }
+    .header-text p  { font-size: 8pt; color: #555; }
+
+    .form-title {
+      text-align: center;
+      font-size: 11pt;
+      font-weight: bold;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 1px;
+      color: #1e293b;
+    }
+
+    .form-subtitle {
+      text-align: center;
+      font-size: 7.5pt;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    /* Section */
+    .section { margin-bottom: 7px; }
+
+    .section-title {
+      font-size: 8.5pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: #fff;
+      background: #0d9488;
+      padding: 2px 8px;
+      margin-bottom: 5px;
+    }
+
+    /* Grid */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px 12px; }
+    .grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px 12px; }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+
+    /* Field */
+    .field { display: flex; flex-direction: column; gap: 1px; }
+
+    .field label {
+      font-size: 7pt;
+      color: #475569;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .field .line {
+      border-bottom: 1px solid #334155;
+      min-height: 16px;
+      width: 100%;
+    }
+
+    /* Checkbox row */
+    .check-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 10px;
+      align-items: center;
+      margin-top: 1px;
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 8.5pt;
+    }
+
+    .check-box {
+      width: 11px;
+      height: 11px;
+      border: 1px solid #334155;
+      display: inline-block;
+      flex-shrink: 0;
+    }
+
+    /* Medical history table */
+    .med-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8pt;
+    }
+
+    .med-table th {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      text-align: left;
+      font-size: 7.5pt;
+      font-weight: bold;
+      color: #334155;
+    }
+
+    .med-table td {
+      border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      vertical-align: middle;
+    }
+
+    .med-table .check-cell {
+      text-align: center;
+      width: 36px;
+    }
+
+    /* Two-column medical history layout */
+    .med-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 8px;
+    }
+
+    .med-cols table { width: 100%; }
+
+    /* Consent */
+    .consent-box {
+      border: 1px solid #0d9488;
+      border-radius: 3px;
+      padding: 5px 8px;
+      font-size: 7.5pt;
+      line-height: 1.45;
+      color: #1e293b;
+      margin-bottom: 6px;
+    }
+
+    .consent-box p { margin-bottom: 3px; }
+
+    /* Signature area */
+    .sig-area {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .sig-block { display: flex; flex-direction: column; gap: 2px; }
+
+    .sig-block .sig-line {
+      border-bottom: 1px solid #334155;
+      min-height: 26px;
+    }
+
+    .sig-block label {
+      font-size: 7pt;
+      color: #475569;
+      font-weight: bold;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    /* Footer */
+    .footer {
+      border-top: 1px solid #cbd5e1;
+      margin-top: 6px;
+      padding-top: 3px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 7pt;
+      color: #94a3b8;
+    }
+
+    /* Staff use box */
+    .staff-box {
+      border: 1px dashed #94a3b8;
+      padding: 4px 8px;
+      margin-bottom: 6px;
+    }
+
+    .staff-box .staff-title {
+      font-size: 7pt;
+      font-weight: bold;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+
+    @media print {
+      body { background: #fff; }
+      .page { margin: 0; }
+      .print-btn { display: none !important; }
+    }
+
+    @page { size: A4; margin: 0; }
+
+    .print-btn {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      background: #0d9488;
+      color: #fff;
+      border: none;
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      z-index: 9999;
+    }
+
+    .print-btn:hover { background: #0f766e; }
+  </style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨️ Save as PDF</button>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <img src="/RCMC_LOGO-removebg-preview.png" alt="RCMC Logo" onerror="this.style.display='none'" />
+    <div class="header-text">
+      <h1>Rizalcare Medical Clinic</h1>
+      <p>Patient Registration Form &nbsp;|&nbsp; Walk-In</p>
+    </div>
+  </div>
+
+  <div class="form-title">Walk-In Patient Registration Form</div>
+  <div class="form-subtitle">Please fill out all fields completely and legibly. All information is kept strictly confidential.</div>
+
+  <!-- FOR STAFF USE -->
+  <div class="staff-box">
+    <div class="staff-title">For Staff Use Only</div>
+    <div class="grid-4">
+      <div class="field"><label>Patient ID / Chart No.</label><div class="line"></div></div>
+      <div class="field"><label>Date of Visit</label><div class="line"></div></div>
+      <div class="field"><label>Time In</label><div class="line"></div></div>
+      <div class="field"><label>Attending Physician</label><div class="line"></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: Personal Information -->
+  <div class="section">
+    <div class="section-title">1. Personal Information</div>
+    <div class="grid-4" style="margin-bottom:5px;">
+      <div class="field span-2"><label>Last Name</label><div class="line"></div></div>
+      <div class="field span-2"><label>First Name</label><div class="line"></div></div>
+    </div>
+    <div class="grid-4" style="margin-bottom:5px;">
+      <div class="field"><label>Middle Name</label><div class="line"></div></div>
+      <div class="field"><label>Suffix</label><div class="line"></div></div>
+      <div class="field"><label>Nickname / Alias</label><div class="line"></div></div>
+      <div class="field"><label>Date of Birth (MM/DD/YYYY)</label><div class="line"></div></div>
+    </div>
+    <div class="grid-4" style="margin-bottom:5px;">
+      <div class="field">
+        <label>Sex</label>
+        <div class="check-row">
+          <div class="check-item"><div class="check-box"></div> Male</div>
+          <div class="check-item"><div class="check-box"></div> Female</div>
+        </div>
+      </div>
+      <div class="field"><label>Age</label><div class="line"></div></div>
+      <div class="field">
+        <label>Civil Status</label>
+        <div class="check-row">
+          <div class="check-item"><div class="check-box"></div> Single</div>
+          <div class="check-item"><div class="check-box"></div> Married</div>
+          <div class="check-item"><div class="check-box"></div> Widowed</div>
+          <div class="check-item"><div class="check-box"></div> Separated</div>
+        </div>
+      </div>
+      <div class="field"><label>Nationality</label><div class="line"></div></div>
+    </div>
+    <div class="grid-4" style="margin-bottom:5px;">
+      <div class="field"><label>Religion</label><div class="line"></div></div>
+      <div class="field"><label>Occupation / Employer</label><div class="line"></div></div>
+      <div class="field"><label>PhilHealth No.</label><div class="line"></div></div>
+      <div class="field"><label>ID No. (Senior / PWD)</label><div class="line"></div></div>
+    </div>
+    <div class="field" style="margin-bottom:2px;">
+      <label>Patient Type</label>
+      <div class="check-row">
+        <div class="check-item"><div class="check-box"></div> Regular</div>
+        <div class="check-item"><div class="check-box"></div> Senior Citizen</div>
+        <div class="check-item"><div class="check-box"></div> PWD</div>
+        <div class="check-item"><div class="check-box"></div> Indigent</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Contact & Address -->
+  <div class="section">
+    <div class="section-title">2. Contact &amp; Address</div>
+    <div class="field" style="margin-bottom:5px;"><label>Complete Home Address (House No., Street, Barangay, City/Municipality, Province)</label><div class="line"></div></div>
+    <div class="grid-4" style="margin-bottom:5px;">
+      <div class="field"><label>Mobile Number</label><div class="line"></div></div>
+      <div class="field"><label>Telephone Number</label><div class="line"></div></div>
+      <div class="field span-2"><label>Email Address</label><div class="line"></div></div>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label>Emergency Contact Person</label><div class="line"></div></div>
+      <div class="field"><label>Relationship</label><div class="line"></div></div>
+      <div class="field"><label>Emergency Contact Number</label><div class="line"></div></div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Chief Complaint -->
+  <div class="section">
+    <div class="section-title">3. Reason for Visit / Chief Complaint</div>
+    <div class="grid-3">
+      <div class="field span-2">
+        <label>Chief Complaint / Symptoms</label>
+        <div class="line" style="min-height:14px;"></div>
+        <div class="line" style="min-height:14px; margin-top:4px;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div class="field"><label>Duration of Symptoms</label><div class="line"></div></div>
+        <div class="field">
+          <label>Consultation Type</label>
+          <div class="check-row">
+            <div class="check-item"><div class="check-box"></div> New Patient</div>
+            <div class="check-item"><div class="check-box"></div> Follow-Up</div>
+          </div>
+        </div>
+        <div class="field"><label>Referred By</label><div class="line"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Medical History -->
+  <div class="section">
+    <div class="section-title">4. Medical History &nbsp;<span style="font-weight:normal; font-size:7pt;">(Check all that apply)</span></div>
+    <div class="med-cols">
+      <table class="med-table">
+        <thead>
+          <tr>
+            <th>Condition</th>
+            <th class="check-cell">Yes</th>
+            <th class="check-cell">No</th>
+            <th>Details / Year</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Hypertension</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Diabetes Mellitus</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Heart Disease</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Asthma / Respiratory</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Kidney / Renal Disease</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Thyroid Disease</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+        </tbody>
+      </table>
+      <table class="med-table">
+        <thead>
+          <tr>
+            <th>Condition</th>
+            <th class="check-cell">Yes</th>
+            <th class="check-cell">No</th>
+            <th>Details / Year</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Cancer / Malignancy</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Tuberculosis (TB)</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Stroke / Neurological</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Previous Surgery / Hosp.</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>Others (specify)</td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td class="check-cell"><div class="check-box" style="margin:auto;"></div></td><td></td></tr>
+          <tr><td>&nbsp;</td><td class="check-cell"></td><td class="check-cell"></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SECTION 5: Allergies & Medications -->
+  <div class="section">
+    <div class="section-title">5. Allergies &amp; Current Medications</div>
+    <div class="grid-3" style="margin-bottom:5px;">
+      <div class="field">
+        <label>Known Allergies</label>
+        <div class="check-row" style="margin-bottom:2px;">
+          <div class="check-item"><div class="check-box"></div> None</div>
+          <div class="check-item"><div class="check-box"></div> Yes (specify)</div>
+        </div>
+        <div class="line"></div>
+        <div class="line" style="margin-top:3px;"></div>
+      </div>
+      <div class="field">
+        <label>Current Medications (name, dose, frequency)</label>
+        <div class="check-row" style="margin-bottom:2px;">
+          <div class="check-item"><div class="check-box"></div> None</div>
+          <div class="check-item"><div class="check-box"></div> Yes (specify)</div>
+        </div>
+        <div class="line"></div>
+        <div class="line" style="margin-top:3px;"></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:5px;">
+        <div class="field">
+          <label>Smoking</label>
+          <div class="check-row">
+            <div class="check-item"><div class="check-box"></div> Non-smoker</div>
+            <div class="check-item"><div class="check-box"></div> Current</div>
+            <div class="check-item"><div class="check-box"></div> Former</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Alcohol Use</label>
+          <div class="check-row">
+            <div class="check-item"><div class="check-box"></div> None</div>
+            <div class="check-item"><div class="check-box"></div> Occasional</div>
+            <div class="check-item"><div class="check-box"></div> Regular</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Pregnant? (Female)</label>
+          <div class="check-row">
+            <div class="check-item"><div class="check-box"></div> N/A</div>
+            <div class="check-item"><div class="check-box"></div> Yes</div>
+            <div class="check-item"><div class="check-box"></div> No</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: Consent -->
+  <div class="section">
+    <div class="section-title">6. Patient Consent &amp; Data Privacy</div>
+    <div class="consent-box">
+      <p>I hereby authorize <strong>Rizalcare Medical Clinic</strong> to collect, use, and process my personal and medical information for healthcare services, in accordance with the <strong>Data Privacy Act of 2012 (R.A. 10173)</strong>. My information will be kept confidential and shared only with authorized healthcare providers involved in my care. I consent to its use for treatment, billing, and clinic records management.</p>
+      <p>I certify that all information provided is true and accurate to the best of my knowledge.</p>
+    </div>
+    <div class="sig-area">
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <label>Patient Signature over Printed Name</label>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <label>Guardian / Representative (if minor or incapacitated)</label>
+      </div>
+      <div class="sig-block">
+        <div class="sig-line"></div>
+        <label>Date Signed</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <span>Rizalcare Medical Clinic &nbsp;|&nbsp; Walk-In Patient Registration Form</span>
+    <span>Form Version 1.0 &nbsp;|&nbsp; March 2026</span>
+  </div>
+
+</div>
+</body>
+</html>

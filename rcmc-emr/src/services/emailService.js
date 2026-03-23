@@ -15,7 +15,6 @@ const RESEND_API_URL = 'https://api.resend.com/emails'
 export const sendEmail = async (to, subject, html) => {
   // Check if Resend is configured
   if (!RESEND_API_KEY) {
-    console.warn('⚠️ Resend not configured. Set VITE_RESEND_API_KEY in .env')
     return { success: false, error: 'Email service not configured' }
   }
 
@@ -37,7 +36,6 @@ export const sendEmail = async (to, subject, html) => {
     const data = await response.json()
     
     if (response.ok) {
-      console.log('✅ Email sent successfully:', data)
       return { success: true, id: data.id }
     } else {
       console.error('❌ Email failed:', data)

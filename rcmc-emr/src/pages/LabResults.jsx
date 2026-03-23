@@ -3,7 +3,7 @@ import { Upload, FileText, Calendar, User, Trash2, Eye, Download, Search, Filter
 import { supabase } from '../lib/supabase'
 import { initGoogleDrive, uploadToGoogleDrive, deleteFromGoogleDrive } from '../lib/googleDriveOAuth'
 import { useAuth } from '../context/AuthContext'
-import HeartbeatLoader from '../components/HeartbeatLoader'
+import SkeletonLoader from '../components/SkeletonLoader'
 
 const LabResults = () => {
   const [labResults, setLabResults] = useState([])
@@ -202,7 +202,11 @@ const LabResults = () => {
   ]
 
   if (loading) {
-    return <HeartbeatLoader />
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <SkeletonLoader variant="table" message="Loading lab results..." />
+      </div>
+    )
   }
 
 
@@ -291,7 +295,12 @@ const LabResults = () => {
 
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.open(result.google_drive_url, '_blank')}
+                  onClick={() => {
+                    const url = result.google_drive_file_id
+                      ? `https://drive.google.com/file/d/${result.google_drive_file_id}/preview`
+                      : result.google_drive_url
+                    window.open(url, '_blank')
+                  }}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-50 text-teal-700 rounded-lg hover:bg-teal-100 transition-colors text-sm"
                 >
                   <Eye size={16} />

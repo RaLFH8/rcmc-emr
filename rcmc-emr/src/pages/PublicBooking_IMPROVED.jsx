@@ -7,7 +7,8 @@ import {
   createInitialFormState,
   validateBookingForm,
   getTodayDate,
-  formatDisplayDate
+  formatDisplayDate,
+  formatScheduleSummary
 } from '../utils/bookingHelpers';
 
 export default function PublicBooking() {
@@ -121,13 +122,6 @@ export default function PublicBooking() {
 
       // Convert time to 24-hour format
       const convertedTime = convertTo24Hour(selectedTime);
-      
-      console.log('🕐 Submitting booking:', {
-        doctor: `${selectedDoctor.first_name} ${selectedDoctor.last_name}`,
-        date: selectedDate,
-        time: `${selectedTime} → ${convertedTime}`,
-        patient: `${patientData.firstName} ${patientData.lastName}`
-      });
 
       // Prepare booking data
       const bookingData = {
@@ -147,7 +141,6 @@ export default function PublicBooking() {
       // Submit booking
       await db.createOnlineBooking(bookingData);
       
-      console.log('✅ Booking successful!');
       setBookingSuccess(true);
     } catch (error) {
       console.error('❌ Booking error:', error);
@@ -256,6 +249,12 @@ export default function PublicBooking() {
                         Dr. {doctor.first_name} {doctor.last_name}
                       </h3>
                       <p className="text-sm text-gray-600">{doctor.specialization}</p>
+                      {formatScheduleSummary(doctor.schedule) && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          <Clock size={11} className="inline mr-1" />
+                          {formatScheduleSummary(doctor.schedule)}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -389,11 +388,10 @@ export default function PublicBooking() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      <Mail className="inline mr-1" size={14} /> Email *
+                      <Mail className="inline mr-1" size={14} /> Email (Optional)
                     </label>
                     <input
                       type="email"
-                      required
                       value={patientData.email}
                       onChange={(e) => updatePatientData('email', e.target.value)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -466,7 +464,7 @@ export default function PublicBooking() {
                     <strong>Date of Birth:</strong> {new Date(patientData.dateOfBirth).toLocaleDateString()}<br />
                     <strong>Gender:</strong> {patientData.gender}<br />
                     <strong>Phone:</strong> {patientData.phone}<br />
-                    <strong>Email:</strong> {patientData.email}<br />
+                    {patientData.email && <><strong>Email:</strong> {patientData.email}<br /></>}
                     <strong>Address:</strong> {patientData.address}<br />
                     <strong>Reason:</strong> {patientData.reason}
                   </p>

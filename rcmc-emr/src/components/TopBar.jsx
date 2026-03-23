@@ -6,6 +6,28 @@ const TopBar = ({ userProfile, setCurrentPage }) => {
   const [showNotifications, setShowNotifications] = useState(false)
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const pstDate = new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(currentTime)
+
+  const pstTime = new Intl.DateTimeFormat('en-PH', {
+    timeZone: 'Asia/Manila',
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(currentTime)
   
   // Use real notifications from context
   const { 
@@ -347,13 +369,11 @@ const TopBar = ({ userProfile, setCurrentPage }) => {
           )}
         </div>
 
-        <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+        <div className="flex items-center gap-2 pl-4 border-l border-slate-200">
+          <Clock className="w-4 h-4 text-teal-500 flex-shrink-0" />
           <div className="text-right">
-            <p className="text-sm font-semibold text-slate-900">{userProfile?.full_name || 'User'}</p>
-            <p className="text-xs text-slate-500 capitalize">{userProfile?.role || 'Staff'}</p>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center text-white font-semibold">
-            {userProfile?.full_name?.charAt(0) || 'U'}
+            <p className="text-xs text-slate-500">{pstDate}</p>
+            <p className="text-sm font-semibold text-slate-900 tabular-nums">{pstTime}</p>
           </div>
         </div>
       </div>

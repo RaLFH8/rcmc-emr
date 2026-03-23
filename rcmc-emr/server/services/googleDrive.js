@@ -73,9 +73,7 @@ export async function uploadToGoogleDrive(fileBuffer, metadata) {
       fields: 'id, name, webViewLink, webContentLink'
     })
 
-    // Make file accessible (optional - depends on your security requirements)
-    // Uncomment if you want files to be viewable by anyone with the link
-    /*
+    // Make file publicly readable so the stored URL works for anyone with the link
     await driveClient.permissions.create({
       fileId: response.data.id,
       requestBody: {
@@ -83,11 +81,10 @@ export async function uploadToGoogleDrive(fileBuffer, metadata) {
         type: 'anyone'
       }
     })
-    */
 
     return {
       fileId: response.data.id,
-      url: response.data.webViewLink || `https://drive.google.com/file/d/${response.data.id}/view`,
+      url: `https://drive.google.com/file/d/${response.data.id}/preview`,
       name: response.data.name
     }
   } catch (error) {

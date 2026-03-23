@@ -132,15 +132,23 @@ export async function getKPIMetrics(dateRange) {
       currentSatisfaction,
       previousSatisfaction,
       currentRevenue,
-      previousRevenue
+      previousRevenue,
+      currentNetRevenue,
+      previousNetRevenue,
+      currentAR,
+      previousAR
     ] = await Promise.all([
-      getTotalPatients(startDate, endDate),
-      getTotalPatients(previousPeriod.startDate, previousPeriod.endDate),
+      getTotalPatients(),
+      getTotalPatients(),
       getBedOccupancyRate(),
       getPatientSatisfaction(startDate, endDate),
       getPatientSatisfaction(previousPeriod.startDate, previousPeriod.endDate),
       getTotalRevenue(startDate, endDate),
-      getTotalRevenue(previousPeriod.startDate, previousPeriod.endDate)
+      getTotalRevenue(previousPeriod.startDate, previousPeriod.endDate),
+      getNetRevenue(startDate, endDate),
+      getNetRevenue(previousPeriod.startDate, previousPeriod.endDate),
+      getAccountsReceivable(startDate, endDate),
+      getAccountsReceivable(previousPeriod.startDate, previousPeriod.endDate)
     ])
     
     const metrics = {
@@ -175,6 +183,22 @@ export async function getKPIMetrics(dateRange) {
         changePercentage: previousRevenue > 0
           ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
           : 0
+      },
+      netRevenue: {
+        current: currentNetRevenue,
+        previous: previousNetRevenue,
+        change: currentNetRevenue - previousNetRevenue,
+        changePercentage: previousNetRevenue > 0
+          ? ((currentNetRevenue - previousNetRevenue) / previousNetRevenue) * 100
+          : 0
+      },
+      accountsReceivable: {
+        current: currentAR,
+        previous: previousAR,
+        change: currentAR - previousAR,
+        changePercentage: previousAR > 0
+          ? ((currentAR - previousAR) / previousAR) * 100
+          : 0
       }
     }
     
@@ -190,14 +214,14 @@ export async function getKPIMetrics(dateRange) {
  * Get total active patients for date range
  * Validates: Requirement 1.2
  */
-async function getTotalPatients(startDate, endDate) {
+async function getTotalPatients() {
   try {
+    // Total Patients = all active patients in the system (not filtered by date range)
+    // The date range is used only to compute the "previous period" comparison delta
     const query = supabase
       .from('patients')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'Active')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
     
     const { count, error } = await queryWithTimeout(query)
     
@@ -225,16 +249,17 @@ async function getBedOccupancyRate() {
     
     const total = data?.length || 0
     const occupied = data?.filter(room => room.status === 'Occupied').length || 0
+    const available = data?.filter(room => room.status === 'Available').length || 0
     
     const current = total > 0 ? (occupied / total) * 100 : 0
     
-    // For previous, we'll use a simple estimate (current - 5%)
-    // In a real system, you'd track historical occupancy
-    const previous = Math.max(0, current - 5)
+    // Previous = occupancy if all currently-available rooms were also occupied
+    // i.e., what occupancy would look like without the currently-available rooms
+    const previous = total > 0 ? (occupied / (total - available || total)) * 100 : 0
     
     return {
       current: Math.round(current * 10) / 10,
-      previous: Math.round(previous * 10) / 10
+      previous: Math.min(100, Math.round(previous * 10) / 10)
     }
   } catch (error) {
     console.error('Error fetching bed occupancy:', error)
@@ -282,12 +307,12 @@ async function getPatientSatisfaction(startDate, endDate) {
  */
 async function getTotalRevenue(startDate, endDate) {
   try {
+    // Use local-time boundaries so daily filter matches the bar chart grouping
     const query = supabase
       .from('billing')
-      .select('amount_paid')
-      .eq('payment_status', 'Paid')
-      .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .select('amount_paid, total_amount')
+      .gte('created_at', `${startDate}T00:00:00`)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -295,10 +320,69 @@ async function getTotalRevenue(startDate, endDate) {
     
     if (!data || data.length === 0) return 0
     
-    const total = data.reduce((acc, bill) => acc + (parseFloat(bill.amount_paid) || 0), 0)
+    // Revenue = MIN(amount_paid, total_amount) per record — caps data-entry errors
+    const total = data.reduce((acc, bill) => {
+      const paid = parseFloat(bill.amount_paid) || 0
+      const billed = parseFloat(bill.total_amount) || 0
+      return acc + Math.min(paid, billed)
+    }, 0)
     return Math.round(total * 100) / 100
   } catch (error) {
     console.error('Error fetching total revenue:', error)
+    return 0
+  }
+}
+
+/**
+ * Get net revenue: sum(amount_paid) - sum(discount_amount)
+ * Net Revenue = Total Revenue minus discounts given (NOT minus unpaid balances)
+ */
+async function getNetRevenue(startDate, endDate) {
+  try {
+    const { data, error } = await queryWithTimeout(
+      supabase
+        .from('billing')
+        .select('amount_paid, discount_amount')
+        .gte('created_at', `${startDate}T00:00:00`)
+        .lte('created_at', `${endDate}T23:59:59`)
+    )
+    if (error) throw error
+    if (!data || data.length === 0) return 0
+    const net = data.reduce((acc, bill) => {
+      return acc + (parseFloat(bill.amount_paid) || 0) - (parseFloat(bill.discount_amount) || 0)
+    }, 0)
+    return Math.round(net * 100) / 100
+  } catch (error) {
+    console.error('Error fetching net revenue:', error)
+    return 0
+  }
+}
+
+/**
+ * Get accounts receivable: sum(remaining_balance) for non-cancelled billing records
+ * Accounts Receivable = unpaid balances owed to the clinic (NOT deducted from revenue)
+ */
+async function getAccountsReceivable(startDate, endDate) {
+  try {
+    const { data, error } = await queryWithTimeout(
+      supabase
+        .from('billing')
+        .select('total_amount, amount_paid')
+        .gte('created_at', `${startDate}T00:00:00`)
+        .lte('created_at', `${endDate}T23:59:59`)
+        .neq('payment_status', 'Cancelled')
+    )
+    if (error) throw error
+    if (!data || data.length === 0) return 0
+    // Deterministic formula: SUM(total_amount - amount_paid) — independent of payment timing
+    const total = data.reduce((acc, bill) => {
+      const billed = parseFloat(bill.total_amount) || 0
+      const paid = parseFloat(bill.amount_paid) || 0
+      return acc + Math.max(0, billed - paid)
+    }, 0)
+    return Math.round(total * 100) / 100
+  } catch (error) {
+    console.error('Error fetching accounts receivable:', error)
     return 0
   }
 }
@@ -416,10 +500,9 @@ export async function getRevenueTrend(dateRange, granularity = 'monthly') {
     
     const query = supabase
       .from('billing')
-      .select('amount_paid, created_at')
-      .eq('payment_status', 'Paid')
+      .select('total_amount, created_at')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
       .order('created_at', { ascending: true })
     
     const { data, error } = await queryWithTimeout(query)
@@ -434,28 +517,34 @@ export async function getRevenueTrend(dateRange, granularity = 'monthly') {
     const aggregated = {}
     
     data.forEach(bill => {
-      const date = new Date(bill.created_at)
+      // Use the date string directly (YYYY-MM-DD) to avoid UTC/local timezone drift.
+      // bill.created_at is stored as a local-time timestamp; substring(0,10) gives the
+      // correct local calendar date without any Date object timezone conversion.
+      const dateStr = bill.created_at.substring(0, 10) // "YYYY-MM-DD"
+      const [yearStr, monthStr] = dateStr.split('-')
+      const year = parseInt(yearStr, 10)
+      const month = parseInt(monthStr, 10)
       let periodKey
       
       if (granularity === 'yearly') {
-        periodKey = date.getFullYear().toString()
+        periodKey = String(year)
       } else if (granularity === 'quarterly') {
-        const quarter = Math.floor(date.getMonth() / 3) + 1
-        periodKey = `${date.getFullYear()}-Q${quarter}`
+        const quarter = Math.floor((month - 1) / 3) + 1
+        periodKey = `${year}-Q${quarter}`
       } else {
         // Monthly (default)
-        periodKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        periodKey = `${year}-${String(month).padStart(2, '0')}`
       }
       
       if (!aggregated[periodKey]) {
         aggregated[periodKey] = {
           period: periodKey,
           revenue: 0,
-          date: date
+          date: new Date(dateStr)
         }
       }
       
-      aggregated[periodKey].revenue += parseFloat(bill.amount_paid) || 0
+      aggregated[periodKey].revenue += parseFloat(bill.total_amount) || 0
     })
     
     // Convert to array and format
@@ -518,8 +607,8 @@ export async function getExpenseBreakdown(dateRange) {
       .single()
     
     const budgets = configData?.config_value || {
-      staff_salaries: 500000,
-      operational_costs: 200000
+      staff_salaries: 0,
+      operational_costs: 0
     }
     
     // Get medical supplies and pharmaceuticals from inventory
@@ -727,16 +816,16 @@ async function calculateEmergencyResponse(startDate, endDate) {
     )
     
     if (error) throw error
-    if (!data || data.length === 0) return 3.8 // Default baseline
+    if (!data || data.length === 0) return 0
     
-    // For now, use a simple heuristic based on completed appointments
+    // Score based on completed vs total emergency appointments
     const completed = data.filter(a => a.status === 'Completed').length
     const rate = (completed / data.length) * 5
     
     return Math.round(rate * 10) / 10
   } catch (error) {
     console.error('Error calculating emergency response:', error)
-    return 3.8
+    return 0
   }
 }
 
@@ -905,15 +994,14 @@ async function getDepartmentRevenue(startDate, endDate) {
     const query = supabase
       .from('billing')
       .select(`
-        amount_paid,
+        total_amount,
         consultations!inner(
           doctor_id,
           doctors!inner(specialization)
         )
       `)
-      .eq('payment_status', 'Paid')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -924,7 +1012,7 @@ async function getDepartmentRevenue(startDate, endDate) {
     const deptRevenue = {}
     data.forEach(bill => {
       const dept = bill.consultations?.doctors?.specialization || 'General Medicine'
-      const amount = parseFloat(bill.amount_paid) || 0
+      const amount = parseFloat(bill.total_amount) || 0
       deptRevenue[dept] = (deptRevenue[dept] || 0) + amount
     })
     
@@ -950,10 +1038,9 @@ async function getServiceTypeRevenue(startDate, endDate) {
   try {
     const query = supabase
       .from('billing')
-      .select('items, amount_paid')
-      .eq('payment_status', 'Paid')
+      .select('items, total_amount')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -1012,10 +1099,9 @@ async function getPaymentMethodDistribution(startDate, endDate) {
   try {
     const query = supabase
       .from('billing')
-      .select('payment_method, amount_paid')
-      .eq('payment_status', 'Paid')
+      .select('payment_method, total_amount')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -1026,7 +1112,7 @@ async function getPaymentMethodDistribution(startDate, endDate) {
     const methodRevenue = {}
     data.forEach(bill => {
       const method = bill.payment_method || 'Cash'
-      const amount = parseFloat(bill.amount_paid) || 0
+      const amount = parseFloat(bill.total_amount) || 0
       methodRevenue[method] = (methodRevenue[method] || 0) + amount
     })
     
@@ -1050,29 +1136,44 @@ async function getPaymentMethodDistribution(startDate, endDate) {
  */
 async function getDoctorPerformance(startDate, endDate) {
   try {
-    const query = supabase
+    // First, get billing records with consultation IDs
+    const billingQuery = supabase
       .from('billing')
-      .select(`
-        amount_paid,
-        consultations!inner(
-          doctor_id,
-          doctors!inner(name)
-        )
-      `)
-      .eq('payment_status', 'Paid')
+      .select('total_amount, consultation_id')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
+      .not('consultation_id', 'is', null)
     
-    const { data, error } = await queryWithTimeout(query)
+    const { data: billingData, error: billingError } = await queryWithTimeout(billingQuery)
     
-    if (error) throw error
-    if (!data || data.length === 0) return []
+    if (billingError) throw billingError
+    if (!billingData || billingData.length === 0) return []
+    
+    // Get unique consultation IDs
+    const consultationIds = [...new Set(billingData.map(b => b.consultation_id))]
+    
+    // Fetch consultations with doctor information
+    const consultQuery = supabase
+      .from('consultations')
+      .select('id, doctor_id, doctors(id, name)')
+      .in('id', consultationIds)
+    
+    const { data: consultData, error: consultError } = await queryWithTimeout(consultQuery)
+    
+    if (consultError) throw consultError
+    if (!consultData || consultData.length === 0) return []
+    
+    // Create a map of consultation_id -> doctor_name
+    const consultationDoctorMap = new Map()
+    consultData.forEach(consult => {
+      consultationDoctorMap.set(consult.id, consult.doctors?.name || 'Unknown Doctor')
+    })
     
     // Aggregate by doctor
     const doctorRevenue = {}
-    data.forEach(bill => {
-      const doctorName = bill.consultations?.doctors?.name || 'Unknown Doctor'
-      const amount = parseFloat(bill.amount_paid) || 0
+    billingData.forEach(bill => {
+      const doctorName = consultationDoctorMap.get(bill.consultation_id) || 'Unknown Doctor'
+      const amount = parseFloat(bill.total_amount) || 0
       doctorRevenue[doctorName] = (doctorRevenue[doctorName] || 0) + amount
     })
     
@@ -1100,9 +1201,8 @@ async function getInventoryCosts(startDate, endDate) {
     const query = supabase
       .from('billing')
       .select('items')
-      .eq('payment_status', 'Paid')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -1146,13 +1246,12 @@ async function getPatientTypeRevenue(startDate, endDate) {
     const query = supabase
       .from('billing')
       .select(`
-        amount_paid,
+        total_amount,
         patient_id,
         created_at
       `)
-      .eq('payment_status', 'Paid')
       .gte('created_at', startDate)
-      .lte('created_at', endDate)
+      .lte('created_at', `${endDate}T23:59:59`)
     
     const { data, error } = await queryWithTimeout(query)
     
@@ -1176,7 +1275,7 @@ async function getPatientTypeRevenue(startDate, endDate) {
     let returningPatientRevenue = 0
     
     data.forEach(bill => {
-      const amount = parseFloat(bill.amount_paid) || 0
+      const amount = parseFloat(bill.total_amount) || 0
       const patientCreated = patientMap.get(bill.patient_id)
       const billDate = new Date(bill.created_at)
       

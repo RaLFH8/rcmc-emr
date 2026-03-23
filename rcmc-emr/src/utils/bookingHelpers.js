@@ -154,7 +154,6 @@ export function validateBookingForm(formData) {
   if (!formData.dateOfBirth) errors.push('Date of birth is required');
   if (!formData.gender) errors.push('Gender is required');
   if (!formData.phone?.trim()) errors.push('Phone number is required');
-  if (!formData.email?.trim()) errors.push('Email is required');
   if (!formData.address?.trim()) errors.push('Address is required');
   if (!formData.reason?.trim()) errors.push('Reason for visit is required');
   
@@ -193,4 +192,55 @@ export function formatDisplayDate(dateString) {
     month: 'long',
     day: 'numeric'
   });
+}
+
+/**
+ * Formats a doctor's schedule object into a readable summary string
+ * Schedule format: { "0": { start: 8, end: 17 }, "1": { start: 9, end: 12 } }
+ * where keys are day indices (0=Sun, 1=Mon, ... 6=Sat)
+ * @param {Object} schedule - Doctor schedule JSONB object
+ * @returns {string} Formatted schedule string (e.g., "Mon–Fri 08:00–17:00") or empty string
+ */
+export function formatScheduleSummary(schedule) {
+  if (!schedule || typeof schedule !== 'object') return '';
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const hasAny = Object.entries(schedule).some(([d, h]) =>
+    !isNaN(Number(d)) && (h?.start ?? h?.startTime) != null
+  );
+  if (!hasAny) return '';
+
+  // Group consecutive days with the same time range
+  // Must be both consecutive day indices AND same time
+  const groups = [];
+  let current = null;
+  let prevDayIndex = null;
+
+  for (const [day, hours] of Object.entries(schedule)
+    .filter(([d]) => !isNaN(Number(d)) && Number(d) >= 0 && Number(d) <= 6)
+    .sort(([a], [b]) => Number(a) - Number(b))) {
+    const start = hours?.start ?? hours?.startTime;
+    const end = hours?.end ?? hours?.endTime;
+    if (start == null || end == null) continue;
+    const dayIndex = Number(day);
+    const dayName = DAY_NAMES[dayIndex];
+    const fmt = (h) => `${String(h).padStart(2, '0')}:00`;
+    const time = `${fmt(start)}–${fmt(end)}`;
+
+    const isConsecutive = prevDayIndex !== null && dayIndex === prevDayIndex + 1;
+    const sameTime = current && current.time === time;
+
+    if (isConsecutive && sameTime) {
+      current.end = dayName;
+    } else {
+      current = { start: dayName, end: null, time };
+      groups.push(current);
+    }
+    prevDayIndex = dayIndex;
+  }
+
+  return groups
+    .map(g => g.end ? `${g.start}–${g.end} ${g.time}` : `${g.start} ${g.time}`)
+    .join(', ');
 }

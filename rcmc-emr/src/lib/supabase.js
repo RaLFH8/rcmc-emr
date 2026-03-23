@@ -3,7 +3,28 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    storageKey: 'rcmc-emr-auth-token',
+  },
+})
+
+/**
+ * Returns true if the doctor works on the given date based on their schedule.
+ * When schedule is null/undefined, falls back to Mon–Fri (day index 1–5).
+ * @param {Object|null} schedule - JSONB schedule object keyed by day-of-week string
+ * @param {string} date - ISO date string "YYYY-MM-DD"
+ */
+export function isDoctorWorkingDay(schedule, date) {
+  if (!date) return false
+  const [y, m, d] = date.split('-').map(Number)
+  const dayIndex = new Date(y, m - 1, d).getDay()
+  if (!schedule) {
+    // Fallback: Mon–Fri only
+    return dayIndex >= 1 && dayIndex <= 5
+  }
+  return Object.prototype.hasOwnProperty.call(schedule, String(dayIndex))
+}
 
 // Database helper functions
 export const db = {
@@ -141,7 +162,7 @@ export const db = {
   async getDoctors() {
     const { data, error } = await supabase
       .from('doctors')
-      .select('id, first_name, last_name, specialization, license_number, contact_number, email, schedule, consultation_fee, ptr_number, s2_number, status, satisfaction_score, total_reviews')
+      .select('id, user_id, first_name, last_name, specialization, license_number, contact_number, email, schedule, consultation_fee, ptr_number, s2_number, status, satisfaction_score, total_reviews')
       .eq('status', 'Active')
       .order('satisfaction_score', { ascending: false, nullsLast: true })
       .order('last_name')
@@ -306,6 +327,31 @@ export const db = {
     }
   },
 
+  // Returns the count of distinct patients seen by a specific doctor
+  // (via appointments OR consultations). Uses a Set to deduplicate.
+  async getDoctorPatientCount(doctorId) {
+    try {
+      const [apptResult, consultResult] = await Promise.all([
+        supabase
+          .from('appointments')
+          .select('patient_id')
+          .eq('doctor_id', doctorId),
+        supabase
+          .from('consultations')
+          .select('patient_id')
+          .eq('doctor_id', doctorId)
+      ])
+
+      const patientIds = new Set()
+      ;(apptResult.data || []).forEach(r => r.patient_id && patientIds.add(r.patient_id))
+      ;(consultResult.data || []).forEach(r => r.patient_id && patientIds.add(r.patient_id))
+
+      return patientIds.size
+    } catch {
+      return 0
+    }
+  },
+
   async getPatientStats(months = 6) {
     const { data, error } = await supabase
       .from('patients')
@@ -383,16 +429,16 @@ export const db = {
   async getRevenueStats() {
     const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0]
 
-    // Get total revenue from billing
+    // Get total revenue from billing — sum amount_paid (not total_amount) to exclude unpaid balances
     const { data: billingData, error } = await supabase
       .from('billing')
-      .select('total_amount, payment_status, created_at')
-      .eq('payment_status', 'Paid')
+      .select('amount_paid, payment_status, created_at')
+      .not('payment_status', 'eq', 'Cancelled')
       .gte('created_at', firstDayOfMonth)
 
     if (error) throw error
 
-    const totalRevenue = billingData.reduce((sum, bill) => sum + (parseFloat(bill.total_amount) || 0), 0)
+    const totalRevenue = billingData.reduce((sum, bill) => sum + (parseFloat(bill.amount_paid) || 0), 0)
 
     return {
       totalRevenue,
@@ -722,6 +768,7 @@ export const db = {
     const { data, error } = await supabase
       .from('services')
       .select('*')
+      .eq('status', 'Active')
       .order('category', { ascending: true })
       .order('name', { ascending: true })
     
@@ -764,9 +811,9 @@ export const db = {
   async getServicesByCodePrefix(prefix) {
     const { data, error } = await supabase
       .from('services')
-      .select('service_code')
-      .like('service_code', `${prefix}%`)
-      .order('service_code', { ascending: false })
+      .select('code')
+      .like('code', `${prefix}%`)
+      .order('code', { ascending: false })
     
     if (error) throw error
     return data || []
@@ -776,7 +823,7 @@ export const db = {
     const { data, error } = await supabase
       .from('services')
       .select('*')
-      .eq('service_code', code)
+      .eq('code', code)
       .single()
     
     if (error && error.code !== 'PGRST116') throw error // PGRST116 = not found
@@ -946,6 +993,33 @@ export const db = {
     return data
   },
 
+  async getInventorySummary() {
+    const { data, error } = await supabase
+      .from('inventory_summary')
+      .select('*')
+      .order('name')
+    if (error) throw error
+    return data || []
+  },
+
+  async getExpiringInventory() {
+    const { data, error } = await supabase
+      .from('expiring_inventory')
+      .select('*')
+      .order('days_until_expiry')
+    if (error) throw error
+    return data || []
+  },
+
+  async getExpiredInventory() {
+    const { data, error } = await supabase
+      .from('expired_inventory')
+      .select('*')
+      .order('expiration_date')
+    if (error) throw error
+    return data || []
+  },
+
   // ==================== BILLING/PAYMENTS ====================
   async getBilling(limit = 100, offset = 0, searchTerm = '', statusFilter = 'All') {
     let query = supabase
@@ -1048,7 +1122,52 @@ export const db = {
   },
 
   // ==================== ONLINE BOOKING ====================
-  async getAvailableTimeSlots(doctorId, date) {
+  async getAvailableTimeSlots(doctorId, date, schedule) {
+    // Determine working hours from schedule
+    // Parse date parts directly to avoid timezone/DST off-by-one issues
+    const [y, m, d] = date.split('-').map(Number)
+    const dayIndexNum = new Date(y, m - 1, d).getDay()
+    const dayIndex = String(dayIndexNum)
+    // Defensive: if schedule came back as a JSON string (TEXT column), parse it
+    const parsedSchedule = typeof schedule === 'string' ? (() => { try { return JSON.parse(schedule) } catch { return null } })() : schedule
+
+    console.log('[TimeSlots] doctorId:', doctorId, 'date:', date, 'dayIndex:', dayIndex)
+    console.log('[TimeSlots] raw schedule:', schedule)
+    console.log('[TimeSlots] parsedSchedule:', parsedSchedule)
+
+    // If schedule is null, fetch it fresh from DB (in case caller passed stale/null value)
+    let effectiveSchedule = parsedSchedule
+    if (!effectiveSchedule) {
+      const { data: doctorData } = await supabase
+        .from('doctors')
+        .select('schedule')
+        .eq('id', doctorId)
+        .single()
+      if (doctorData?.schedule) {
+        effectiveSchedule = typeof doctorData.schedule === 'string'
+          ? (() => { try { return JSON.parse(doctorData.schedule) } catch { return null } })()
+          : doctorData.schedule
+        console.log('[TimeSlots] fetched schedule from DB:', effectiveSchedule)
+      }
+    }
+
+    const daySchedule = effectiveSchedule?.[dayIndex]
+    console.log('[TimeSlots] daySchedule for day', dayIndex, ':', daySchedule)
+
+    // If no schedule set, fall back to Mon–Fri 8–17
+    let start, end
+    if (!daySchedule) {
+      // Schedule exists but this day is not a working day (or no schedule at all)
+      console.log('[TimeSlots] No schedule for this day, returning empty')
+      return []
+    } else {
+      start = daySchedule.start ?? daySchedule.startTime ?? daySchedule.from
+      end = daySchedule.end ?? daySchedule.endTime ?? daySchedule.to
+      if (start == null || end == null) return []
+      start = Number(start)
+      end = Number(end)
+    }
+
     // Get existing appointments for this doctor and date
     const { data: appointments, error} = await supabase
       .from('appointments')
@@ -1059,9 +1178,10 @@ export const db = {
 
     if (error) throw error
 
-    // Generate time slots (10 AM - 5 PM, 20-minute intervals)
-    const slots = []
-    const bookedTimes = appointments.map(apt => apt.appointment_time)
+    // Normalize to HH:MM — DB may store as HH:MM:SS
+    const bookedTimes = appointments.map(a =>
+      a.appointment_time ? a.appointment_time.substring(0, 5) : ''
+    )
     
     // Check if selected date is today
     const today = new Date().toISOString().split('T')[0]
@@ -1070,23 +1190,17 @@ export const db = {
     // Get current time in minutes for comparison
     const now = new Date()
     const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes()
-    
-    for (let hour = 10; hour < 17; hour++) {
-      for (let minute of [0, 20, 40]) {
+
+    // Generate 20-min slots within [start, end) working hours
+    const slots = []
+    for (let hour = start; hour < end; hour++) {
+      for (const minute of [0, 20, 40]) {
         const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
-        const displayTime = this.formatTime12Hour(timeStr)
-        
-        // Calculate slot time in minutes
         const slotTimeInMinutes = hour * 60 + minute
-        
-        // Check if slot is in the past (for today only)
         const isPast = isToday && (slotTimeInMinutes + 20 <= currentTimeInMinutes)
-        
-        // Slot is available if: not booked AND not in the past
         const isAvailable = !bookedTimes.includes(timeStr) && !isPast
-        
         slots.push({
-          slot: displayTime,
+          slot: this.formatTime12Hour(timeStr),
           time: timeStr,
           is_available: isAvailable
         })
@@ -1135,17 +1249,6 @@ export const db = {
     const contactNumber = bookingData.patient_contact || bookingData.phone || bookingData.contact_number || bookingData.contact;
     const emailAddress = bookingData.patient_email || bookingData.email;
     
-    console.log('📋 Starting online booking process...', {
-      doctor_id: bookingData.doctor_id,
-      date: bookingData.appointment_date || bookingData.date,
-      time: bookingData.appointment_time || bookingData.time,
-      patient_contact: contactNumber,
-      patient_email: emailAddress,
-      patient_id: bookingData.patient_id, // For existing patients
-      raw_booking_data: bookingData,
-      cache_workaround: 'comprehensive'
-    })
-
     try {
       // STEP 1: Validate required booking data
       const doctorId = bookingData.doctor_id;
@@ -1161,7 +1264,6 @@ export const db = {
       }
 
       // STEP 2: Check if slot is still available
-      console.log('⏰ Checking slot availability...')
       const isAvailable = await this.checkSlotAvailability(
         doctorId,
         appointmentDate,
@@ -1169,10 +1271,8 @@ export const db = {
       )
 
       if (!isAvailable) {
-        console.error('❌ Slot no longer available')
         throw new Error('This time slot is no longer available')
       }
-      console.log('✅ Slot is available')
 
       // STEP 3: Find or create patient
       let patientId = bookingData.patient_id; // Check if patient_id was provided (existing patient)
@@ -1180,7 +1280,6 @@ export const db = {
 
       if (patientId) {
         // Existing patient - fetch their record
-        console.log('✅ Using existing patient ID:', patientId)
         const { data: existingPatient, error: fetchError } = await supabase
           .from('patients')
           .select('id, patient_number, first_name, last_name, email, contact_number')
@@ -1188,19 +1287,12 @@ export const db = {
           .single()
 
         if (fetchError) {
-          console.error('❌ Error fetching existing patient:', fetchError)
           throw new Error(`Failed to fetch patient record: ${fetchError.message}`)
         }
 
         patientRecord = existingPatient
-        console.log('✅ Found existing patient:', {
-          id: patientId,
-          patient_number: patientRecord.patient_number,
-          name: `${patientRecord.first_name} ${patientRecord.last_name}`
-        })
       } else {
         // No patient_id provided - try to find existing patient by contact number OR email
-        console.log('🔍 Searching for existing patient...')
         const { data: existingPatients, error: searchError } = await supabase
           .from('patients')
           .select('id, patient_number, first_name, last_name, email, contact_number')
@@ -1208,7 +1300,6 @@ export const db = {
           .limit(1)
 
         if (searchError) {
-          console.error('❌ Error searching for patient:', searchError)
           throw new Error(`Patient lookup failed: ${searchError.message}`)
         }
 
@@ -1216,15 +1307,8 @@ export const db = {
           // Patient found
           patientRecord = existingPatients[0]
           patientId = patientRecord.id
-          console.log('✅ Found existing patient:', {
-            id: patientId,
-            patient_number: patientRecord.patient_number,
-            name: `${patientRecord.first_name} ${patientRecord.last_name}`
-          })
         } else {
           // Patient not found - create new patient
-          console.log('➕ Creating new patient record...')
-          
           // COMPREHENSIVE CACHE WORKAROUND: Accept ALL possible field name variations
           const firstName = bookingData.patient_first_name || bookingData.firstName || bookingData.first_name;
           const lastName = bookingData.patient_last_name || bookingData.lastName || bookingData.last_name;
@@ -1247,13 +1331,11 @@ export const db = {
             .map(([key]) => key)
 
           if (missingFields.length > 0) {
-            console.error('❌ Missing required patient fields:', missingFields)
             throw new Error(`Missing required patient information: ${missingFields.join(', ')}`)
           }
 
           // Generate patient number
           const patientNumber = await this.generatePatientNumber()
-          console.log('🔢 Generated patient number:', patientNumber)
 
           // Prepare patient data with all required fields
           const newPatientData = {
@@ -1274,13 +1356,6 @@ export const db = {
             blood_type: null
           }
 
-          console.log('📝 Inserting patient with data:', {
-            patient_number: newPatientData.patient_number,
-            name: `${newPatientData.first_name} ${newPatientData.last_name}`,
-            contact: newPatientData.contact_number,
-            email: newPatientData.email
-          })
-
           // Insert new patient
           const { data: newPatient, error: patientError } = await supabase
             .from('patients')
@@ -1289,38 +1364,24 @@ export const db = {
             .single()
 
           if (patientError) {
-            console.error('❌ Error creating patient:', {
-              code: patientError.code,
-              message: patientError.message,
-              details: patientError.details,
-              hint: patientError.hint
-            })
             throw new Error(`Failed to create patient record: ${patientError.message}`)
           }
 
           if (!newPatient || !newPatient.id) {
-            console.error('❌ Patient created but no ID returned:', newPatient)
             throw new Error('Patient record created but ID not returned')
           }
 
           patientRecord = newPatient
           patientId = newPatient.id
-          console.log('✅ Successfully created patient:', {
-            id: patientId,
-            patient_number: newPatient.patient_number,
-            name: `${newPatient.first_name} ${newPatient.last_name}`
-          })
         }
       }
 
       // STEP 4: Verify we have a valid patient ID
       if (!patientId) {
-        console.error('❌ No patient ID available after lookup/creation')
         throw new Error('Failed to obtain patient ID')
       }
 
       // STEP 5: Create appointment
-      console.log('📅 Creating appointment...')
       const appointmentData = {
         patient_id: patientId,
         doctor_id: bookingData.doctor_id,
@@ -1332,8 +1393,6 @@ export const db = {
         booking_status: 'pending'
       }
 
-      console.log('📝 Appointment data:', appointmentData)
-
       const { data: appointment, error: appointmentError } = await supabase
         .from('appointments')
         .insert([appointmentData])
@@ -1341,25 +1400,11 @@ export const db = {
         .single()
 
       if (appointmentError) {
-        console.error('❌ Error creating appointment:', {
-          code: appointmentError.code,
-          message: appointmentError.message,
-          details: appointmentError.details
-        })
         throw new Error(`Failed to create appointment: ${appointmentError.message}`)
       }
 
-      console.log('✅ Appointment created successfully:', {
-        appointment_id: appointment.id,
-        patient_id: patientId,
-        date: appointment.appointment_date,
-        time: appointment.appointment_time
-      })
-
       // STEP 6: Send notifications (email and SMS)
       try {
-        console.log('📧 Sending appointment notifications...')
-        
         // Import notification service dynamically
         const { sendAppointmentConfirmation } = await import('../utils/appointmentNotifications')
         
@@ -1374,11 +1419,9 @@ export const db = {
           patientPhone: contactNumber,
           patientName: `${patientRecord.first_name} ${patientRecord.last_name}`
         })
-        
-        console.log('✅ Notifications sent successfully')
       } catch (notificationError) {
         // Don't fail the booking if notifications fail
-        console.error('⚠️ Failed to send notifications (booking still successful):', notificationError)
+        console.error('Failed to send notifications (booking still successful):', notificationError)
       }
 
       return {
@@ -1389,10 +1432,6 @@ export const db = {
       }
 
     } catch (error) {
-      console.error('❌ Online booking failed:', {
-        error: error.message,
-        stack: error.stack
-      })
       throw error
     }
   }
@@ -1438,7 +1477,7 @@ export const db = {
   async getActiveDoctors() {
     const { data, error } = await supabase
       .from('doctors')
-      .select('id, first_name, last_name, specialization, license_number')
+      .select('id, first_name, last_name, specialization, license_number, schedule')
       .eq('status', 'Active')
       .order('last_name')
     
