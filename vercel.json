@@ -1,0 +1,5 @@
+{
+  "buildCommand": "cd rcmc-emr && npm install && npm run build",
+  "outputDirectory": "rcmc-emr/dist",
+  "installCommand": "echo 'skip root install'"
+}
