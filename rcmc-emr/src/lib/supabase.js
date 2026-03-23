@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { computeStatus } from '../utils/inventoryBatchUtils'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -944,17 +945,14 @@ export const db = {
     // Get current stock
     const { data: item, error: fetchError } = await supabase
       .from('inventory')
-      .select('stock, reorder_level')
+      .select('stock, reorder_level, expiration_date')
       .eq('id', id)
       .single()
     
     if (fetchError) throw fetchError
 
     const newStock = Math.max(0, item.stock - quantity)
-    let status = 'In Stock'
-    if (newStock === 0) status = 'Out of Stock'
-    else if (newStock <= item.reorder_level * 0.3) status = 'Critical'
-    else if (newStock <= item.reorder_level) status = 'Low Stock'
+    const status = computeStatus(newStock, item.reorder_level, item.expiration_date)
 
     const { data, error } = await supabase
       .from('inventory')
@@ -971,16 +969,14 @@ export const db = {
     // Get current stock
     const { data: item, error: fetchError } = await supabase
       .from('inventory')
-      .select('stock, reorder_level')
+      .select('stock, reorder_level, expiration_date')
       .eq('id', id)
       .single()
     
     if (fetchError) throw fetchError
 
     const newStock = item.stock + quantity
-    let status = 'In Stock'
-    if (newStock <= item.reorder_level * 0.3) status = 'Critical'
-    else if (newStock <= item.reorder_level) status = 'Low Stock'
+    const status = computeStatus(newStock, item.reorder_level, item.expiration_date)
 
     const { data, error } = await supabase
       .from('inventory')

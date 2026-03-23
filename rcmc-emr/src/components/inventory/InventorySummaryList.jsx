@@ -1,14 +1,17 @@
 import { Pill, AlertTriangle } from 'lucide-react'
-import { getStatusWarning } from '../../utils/inventoryBatchUtils'
+import { getWorstCaseStatus } from '../../utils/inventoryBatchUtils'
 
-const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTerm, categoryFilter, statusFilter }) => {
+const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTerm, categoryFilter, statusFilter, inventory = [] }) => {
+  const matchingNames = statusFilter && statusFilter !== 'All'
+    ? new Set(inventory.filter(b => b.status === statusFilter).map(b => b.name))
+    : null
+
   const filtered = summaries.filter(s => {
     const matchesSearch = !searchTerm ||
       (s.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.supplier ?? '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !categoryFilter || categoryFilter === 'All' || s.category === categoryFilter
-    const matchesStatus = !statusFilter || statusFilter === 'All' ||
-      (s.batches ?? []).some(b => b.status === statusFilter)
+    const matchesStatus = !matchingNames || matchingNames.has(s.name)
     return matchesSearch && matchesCategory && matchesStatus
   })
 
@@ -37,7 +40,8 @@ const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTer
         </thead>
         <tbody className="divide-y divide-slate-200">
           {filtered.map((summary, idx) => {
-            const hasWarning = getStatusWarning(summary.batches ?? [])
+            const batchesForMedicine = inventory.filter(b => b.name === summary.name)
+            const worstStatus = getWorstCaseStatus(batchesForMedicine)
             const isSelected = selectedMedicine === summary.name
             return (
               <tr
@@ -46,7 +50,7 @@ const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTer
                 className={`cursor-pointer transition-colors ${
                   isSelected
                     ? 'bg-teal-50 border-l-4 border-teal-500'
-                    : hasWarning
+                    : worstStatus !== 'In Stock'
                     ? 'bg-amber-50 border-l-4 border-amber-400 hover:bg-amber-100'
                     : 'hover:bg-slate-50'
                 }`}
@@ -57,7 +61,7 @@ const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTer
                       <Pill size={18} className="text-teal-600" />
                     </div>
                     <span className="font-semibold text-slate-900">{summary.name}</span>
-                    {hasWarning && <AlertTriangle size={16} className="text-amber-500" />}
+                    {worstStatus !== 'In Stock' && <AlertTriangle size={16} className="text-amber-500" />}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-600">{summary.category ?? '—'}</td>
@@ -65,13 +69,21 @@ const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTer
                 <td className="px-6 py-4 text-sm text-slate-600">{summary.batch_count ?? 0}</td>
                 <td className="px-6 py-4 text-sm text-slate-600">{summary.earliest_expiry ?? '—'}</td>
                 <td className="px-6 py-4">
-                  {hasWarning ? (
-                    <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700">
-                      Warning
+                  {worstStatus === 'Expired' || worstStatus === 'Out of Stock' ? (
+                    <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                      {worstStatus}
+                    </span>
+                  ) : worstStatus === 'Critical' ? (
+                    <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                      {worstStatus}
+                    </span>
+                  ) : worstStatus === 'Low Stock' ? (
+                    <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                      {worstStatus}
                     </span>
                   ) : (
                     <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
-                      OK
+                      In Stock
                     </span>
                   )}
                 </td>
