@@ -21,7 +21,7 @@ const Dashboard = ({ setCurrentPage }) => {
   })
   const [loading, setLoading] = useState(true)
   const [patients, setPatients] = useState([])
-  const [allPatients, setAllPatients] = useState([]) // Store all patients for filtering
+
   const [selectedDate, setSelectedDate] = useState(new Date()) // Changed to Date object
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [chartView, setChartView] = useState('monthly') // daily, weekly, monthly
@@ -76,7 +76,7 @@ const Dashboard = ({ setCurrentPage }) => {
     
     try {
       // Fetch patients with search term
-      const searchResults = await db.getPatients(20, 0, query)
+      const { data: searchResults = [] } = await db.getPatients(20, 0, query)
       
       // Apply gender filter if active
       let filteredResults = searchResults
@@ -102,7 +102,7 @@ const Dashboard = ({ setCurrentPage }) => {
     
     try {
       // Fetch patients with current search term
-      const searchResults = await db.getPatients(20, 0, searchQuery)
+      const { data: searchResults = [] } = await db.getPatients(20, 0, searchQuery)
       
       // Apply gender filter
       let filteredResults = searchResults
@@ -462,8 +462,7 @@ const Dashboard = ({ setCurrentPage }) => {
         roomTrend: calculateTrend(roomData.available || 0, Math.floor((prevRooms.count || 0) * 0.8)) // Estimate previous availability
       })
 
-      setPatients(patientsData || [])
-      setAllPatients(patientsData || []) // Store all patients
+      setPatients(patientsData?.data || [])
       setTodayAppointments((todayApts || []).slice(0, 4)) // Show first 4 appointments
       setPatientsLastMonth(patientsLastMonthData || 0)
 
@@ -870,7 +869,7 @@ const Dashboard = ({ setCurrentPage }) => {
             <thead>
               <tr className="border-b border-slate-200">
                 <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">No</th>
-                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Item</th>
+                <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Patient Name</th>
                 <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Gender</th>
                 <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Date of Birth</th>
                 <th className="text-left py-3 px-6 text-xs font-semibold text-slate-600 uppercase tracking-wider">Location</th>

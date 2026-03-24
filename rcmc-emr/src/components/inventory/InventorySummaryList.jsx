@@ -2,16 +2,24 @@ import { Pill, AlertTriangle } from 'lucide-react'
 import { getWorstCaseStatus } from '../../utils/inventoryBatchUtils'
 
 const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTerm, categoryFilter, statusFilter, inventory = [] }) => {
-  const matchingNames = statusFilter && statusFilter !== 'All'
-    ? new Set(inventory.filter(b => b.status === statusFilter).map(b => b.name))
-    : null
-
   const filtered = summaries.filter(s => {
     const matchesSearch = !searchTerm ||
       (s.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (s.supplier ?? '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = !categoryFilter || categoryFilter === 'All' || s.category === categoryFilter
-    const matchesStatus = !matchingNames || matchingNames.has(s.name)
+
+    let matchesStatus = true
+    if (statusFilter && statusFilter !== 'All') {
+      const batchesForMed = inventory.filter(b => b.name === s.name)
+      if (statusFilter === 'Expiring Soon') {
+        matchesStatus = batchesForMed.some(b => b.status === 'Expiring Soon')
+      } else if (statusFilter === 'Expired') {
+        matchesStatus = batchesForMed.some(b => b.status === 'Expired')
+      } else {
+        matchesStatus = getWorstCaseStatus(batchesForMed) === statusFilter
+      }
+    }
+
     return matchesSearch && matchesCategory && matchesStatus
   })
 
@@ -60,8 +68,16 @@ const InventorySummaryList = ({ summaries, selectedMedicine, onSelect, searchTer
                     <div className="w-9 h-9 bg-teal-100 rounded-lg flex items-center justify-center">
                       <Pill size={18} className="text-teal-600" />
                     </div>
-                    <span className="font-semibold text-slate-900">{summary.name}</span>
-                    {worstStatus !== 'In Stock' && <AlertTriangle size={16} className="text-amber-500" />}
+                    <div>
+                      <span className="font-semibold text-slate-900">{summary.name}</span>
+                      {batchesForMedicine.some(b => b.status === 'Expiring Soon') && (
+                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700">Expiring Soon</span>
+                      )}
+                      {batchesForMedicine.some(b => b.status === 'Expired') && (
+                        <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-700">Has Expired</span>
+                      )}
+                    </div>
+                    {worstStatus !== 'In Stock' && <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-sm text-slate-600">{summary.category ?? '—'}</td>
