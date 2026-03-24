@@ -47,7 +47,7 @@ function AppContent() {
   }, [])
 
   // Check if current route is public booking page
-  const isPublicBooking = window.location.pathname === '/book' || window.location.hash === '#/book'
+  const isPublicBooking = window.location.pathname === '/book' || window.location.pathname === '/booking' || window.location.hash === '#/book' || window.location.hash === '#/booking'
   const isPublicSurvey = window.location.pathname === '/survey' || window.location.hash === '#/survey'
 
   // Minimum loading screen display time (1.5 seconds)
