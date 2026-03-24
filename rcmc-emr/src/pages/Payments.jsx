@@ -274,7 +274,7 @@ const Payments = () => {
       }))
 
       setPayments(transformedPayments)
-      setPatients(patientsData)
+      setPatients(patientsData.data || patientsData || [])
       setServices(servicesData.filter(s => s.status === 'Active'))
       setInventory(inventoryData.filter(i => i.status === 'In Stock' || i.status === 'Low Stock'))
     } catch (error) {
