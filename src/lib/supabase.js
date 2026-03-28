@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { computeStatus } from '../utils/inventoryBatchUtils'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -29,19 +30,58 @@ export function isDoctorWorkingDay(schedule, date) {
 // Database helper functions
 export const db = {
   // ==================== PATIENTS ====================
-  async getPatients(limit = 20, offset = 0, searchTerm = '') {
+  async getPatients(limit = 20, offset = 0, searchTerm = '', genderFilter = '', bloodTypeFilter = '') {
     let query = supabase
       .from('patients')
-      .select('*')
-      .eq('status', 'Active')
+      .select(`
+        *,
+        appointments(appointment_date),
+        consultations(consultation_date)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     if (searchTerm) {
       query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,patient_number.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%`)
     }
+    if (genderFilter) {
+      query = query.eq('gender', genderFilter)
+    }
+    if (bloodTypeFilter) {
+      query = query.eq('blood_type', bloodTypeFilter)
+    }
 
-    const { data, error } = await query.range(offset, offset + limit - 1)
-    
+    const { data, error, count } = await query.range(offset, offset + limit - 1)
+
+    if (error) throw error
+
+    // Compute last_visit client-side from joined appointment/consultation dates
+    const patients = (data || []).map(p => {
+      const apptDates = (p.appointments || []).map(a => a.appointment_date)
+      const consultDates = (p.consultations || []).map(c => c.consultation_date?.split('T')[0])
+      const allDates = [...apptDates, ...consultDates].filter(Boolean).sort().reverse()
+      return { ...p, last_visit: allDates[0] || null }
+    })
+
+    return { data: patients, count: count || 0 }
+  },
+
+  async getPatientsForExport(searchTerm = '', genderFilter = '', bloodTypeFilter = '') {
+    let query = supabase
+      .from('patients')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (searchTerm) {
+      query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,patient_number.ilike.%${searchTerm}%,contact_number.ilike.%${searchTerm}%`)
+    }
+    if (genderFilter) {
+      query = query.eq('gender', genderFilter)
+    }
+    if (bloodTypeFilter) {
+      query = query.eq('blood_type', bloodTypeFilter)
+    }
+
+    const { data, error } = await query
     if (error) throw error
     return data || []
   },
@@ -944,17 +984,14 @@ export const db = {
     // Get current stock
     const { data: item, error: fetchError } = await supabase
       .from('inventory')
-      .select('stock, reorder_level')
+      .select('stock, reorder_level, expiration_date')
       .eq('id', id)
       .single()
     
     if (fetchError) throw fetchError
 
     const newStock = Math.max(0, item.stock - quantity)
-    let status = 'In Stock'
-    if (newStock === 0) status = 'Out of Stock'
-    else if (newStock <= item.reorder_level * 0.3) status = 'Critical'
-    else if (newStock <= item.reorder_level) status = 'Low Stock'
+    const status = computeStatus(newStock, item.reorder_level, item.expiration_date)
 
     const { data, error } = await supabase
       .from('inventory')
@@ -971,16 +1008,14 @@ export const db = {
     // Get current stock
     const { data: item, error: fetchError } = await supabase
       .from('inventory')
-      .select('stock, reorder_level')
+      .select('stock, reorder_level, expiration_date')
       .eq('id', id)
       .single()
     
     if (fetchError) throw fetchError
 
     const newStock = item.stock + quantity
-    let status = 'In Stock'
-    if (newStock <= item.reorder_level * 0.3) status = 'Critical'
-    else if (newStock <= item.reorder_level) status = 'Low Stock'
+    const status = computeStatus(newStock, item.reorder_level, item.expiration_date)
 
     const { data, error } = await supabase
       .from('inventory')
@@ -1021,7 +1056,7 @@ export const db = {
   },
 
   // ==================== BILLING/PAYMENTS ====================
-  async getBilling(limit = 100, offset = 0, searchTerm = '', statusFilter = 'All') {
+  async getBilling(limit = 100, offset = 0, searchTerm = '', statusFilter = 'All', dateFrom = '', dateTo = '') {
     let query = supabase
       .from('billing')
       .select(`
@@ -1036,6 +1071,14 @@ export const db = {
 
     if (statusFilter !== 'All') {
       query = query.eq('payment_status', statusFilter)
+    }
+
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom)
+    }
+
+    if (dateTo) {
+      query = query.lte('created_at', dateTo + 'T23:59:59')
     }
 
     const { data, error } = await query.range(offset, offset + limit - 1)

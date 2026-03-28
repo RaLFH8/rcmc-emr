@@ -1,4 +1,4 @@
-import { X, Edit2, Trash2, Plus } from 'lucide-react'
+import { X, Edit2, Trash2, Plus, ArrowUpDown } from 'lucide-react'
 import { getFifoBatches } from '../../utils/inventoryBatchUtils'
 
 const statusColors = {
@@ -10,7 +10,7 @@ const statusColors = {
   'Expired': 'bg-red-200 text-red-800',
 }
 
-const BatchDetailPanel = ({ medicine, batches, onAddBatch, onEditBatch, onDeleteBatch, onClose }) => {
+const BatchDetailPanel = ({ medicine, batches, onAddBatch, onEditBatch, onDeleteBatch, onAdjustBatch, onClose }) => {
   const sorted = [...(batches ?? [])].sort((a, b) => {
     if (!a.expiration_date) return 1
     if (!b.expiration_date) return -1
@@ -89,6 +89,13 @@ const BatchDetailPanel = ({ medicine, batches, onAddBatch, onEditBatch, onDelete
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onAdjustBatch && onAdjustBatch(batch)}
+                        className="p-1.5 text-teal-600 hover:bg-teal-50 rounded-lg transition-colors"
+                        title="Adjust stock"
+                      >
+                        <ArrowUpDown size={14} />
+                      </button>
                       <button
                         onClick={() => onEditBatch(batch)}
                         className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"

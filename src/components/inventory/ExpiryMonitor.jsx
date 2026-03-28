@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { AlertTriangle, CheckCircle } from 'lucide-react'
 
 const daysBadgeColor = (days) => {
@@ -6,7 +7,22 @@ const daysBadgeColor = (days) => {
   return 'bg-yellow-100 text-yellow-700'
 }
 
-const ExpiryMonitor = ({ expiringBatches, expiredBatches }) => {
+const ExpiryMonitor = ({ expiringBatches, expiredBatches, onDispose }) => {
+  const [disposeError, setDisposeError] = useState({})
+
+  const handleDispose = async (batch) => {
+    const confirmed = window.confirm(
+      `Dispose "${batch.name}" (Batch: ${batch.batch_number ?? '—'})?\n` +
+      `This will set ${batch.stock} unit(s) to 0 and mark it Out of Stock.`
+    )
+    if (!confirmed) return
+    try {
+      setDisposeError(prev => ({ ...prev, [batch.id]: null }))
+      await onDispose(batch)
+    } catch (err) {
+      setDisposeError(prev => ({ ...prev, [batch.id]: err.message ?? 'Failed to dispose batch.' }))
+    }
+  }
   return (
     <div className="space-y-6">
       {/* Expiring Soon */}
@@ -79,21 +95,43 @@ const ExpiryMonitor = ({ expiringBatches, expiredBatches }) => {
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Stock</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Expiry Date</th>
                   <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Days Expired</th>
+                  {onDispose && <th className="px-6 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {expiredBatches.map(b => (
-                  <tr key={b.id} className="hover:bg-red-50">
-                    <td className="px-6 py-3 font-semibold text-slate-900">{b.name}</td>
-                    <td className="px-6 py-3 font-mono text-xs text-slate-600">{b.batch_number ?? '—'}</td>
-                    <td className="px-6 py-3 text-red-700 font-semibold">{b.stock}</td>
-                    <td className="px-6 py-3 text-slate-600">{b.expiration_date}</td>
-                    <td className="px-6 py-3">
-                      <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
-                        {b.days_expired}d ago
-                      </span>
-                    </td>
-                  </tr>
+                  <>
+                    <tr key={b.id} className="hover:bg-red-50">
+                      <td className="px-6 py-3 font-semibold text-slate-900">{b.name}</td>
+                      <td className="px-6 py-3 font-mono text-xs text-slate-600">{b.batch_number ?? '—'}</td>
+                      <td className="px-6 py-3 text-red-700 font-semibold">{b.stock}</td>
+                      <td className="px-6 py-3 text-slate-600">{b.expiration_date}</td>
+                      <td className="px-6 py-3">
+                        <span className="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          {b.days_expired}d ago
+                        </span>
+                      </td>
+                      {onDispose && (
+                        <td className="px-6 py-3">
+                          {b.stock > 0 && (
+                            <button
+                              onClick={() => handleDispose(b)}
+                              className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 transition-colors"
+                            >
+                              Dispose
+                            </button>
+                          )}
+                        </td>
+                      )}
+                    </tr>
+                    {disposeError[b.id] && (
+                      <tr key={`${b.id}-err`}>
+                        <td colSpan={onDispose ? 6 : 5} className="px-6 py-2 text-xs text-red-600 bg-red-50">
+                          {disposeError[b.id]}
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>

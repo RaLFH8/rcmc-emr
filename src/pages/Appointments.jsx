@@ -8,6 +8,7 @@ import { exportToCSV, copyToClipboard } from '../utils/exportService'
 import CalendarView from '../components/CalendarView'
 import FilterBar from '../components/FilterBar'
 import OrderReviewPanel from '../components/OrderReviewPanel'
+import MedicalHistoryTimeline from '../components/MedicalHistoryTimeline'
 import { parseOrders } from '../utils/orderParser'
 
 // Format a Date to local YYYY-MM-DD (timezone-safe)
@@ -181,7 +182,7 @@ const Appointments = () => {
       ])
       
       setAppointments(allAppointments)
-      setPatients(patientsData)
+      setPatients(patientsData.data || [])
       setDoctors(doctorsData)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -1410,79 +1411,10 @@ const Appointments = () => {
             </div>
 
             <div className="p-6">
-              {patientConsultations.length === 0 ? (
-                <div className="text-center py-12">
-                  <History size={48} className="mx-auto text-slate-300 mb-4" />
-                  <p className="text-slate-600 font-semibold">No previous consultations</p>
-                  <p className="text-slate-500 text-sm mt-1">This is the patient's first visit</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-slate-600 mb-4">
-                    <span className="font-semibold">{patientConsultations.length}</span> previous consultation{patientConsultations.length !== 1 ? 's' : ''}
-                  </p>
-                  
-                  {patientConsultations.map((consultation, index) => (
-                    <div key={consultation.id} className="bg-slate-50 border-2 border-slate-200 rounded-xl p-5 hover:border-teal-300 transition-colors">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <p className="text-sm font-semibold text-teal-600">
-                            Consultation #{patientConsultations.length - index}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {new Date(consultation.consultation_date).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-slate-600">
-                            Dr. {consultation.doctor?.first_name} {consultation.doctor?.last_name}
-                          </p>
-                          <p className="text-xs text-slate-500">{consultation.doctor?.specialization}</p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Chief Complaint</p>
-                          <p className="text-sm text-slate-900 mt-1">{consultation.chief_complaint || 'Not recorded'}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Diagnosis</p>
-                          <p className="text-sm text-slate-900 mt-1">{consultation.diagnosis || 'Not recorded'}</p>
-                        </div>
-
-                        <div>
-                          <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Treatment / Prescription</p>
-                          <p className="text-sm text-slate-900 mt-1 whitespace-pre-wrap">{consultation.prescription || 'Not recorded'}</p>
-                        </div>
-
-                        {consultation.notes && (
-                          <div>
-                            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Additional Notes</p>
-                            <p className="text-sm text-slate-900 mt-1 whitespace-pre-wrap">{consultation.notes}</p>
-                          </div>
-                        )}
-
-                        {consultation.vital_signs && Object.keys(consultation.vital_signs).length > 0 && (
-                          <div>
-                            <p className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Vital Signs</p>
-                            <p className="text-sm text-slate-900 mt-1">
-                              {consultation.vital_signs.notes || JSON.stringify(consultation.vital_signs)}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <MedicalHistoryTimeline 
+                patientId={selectedAppointment.patient?.id} 
+                className=""
+              />
             </div>
 
             <div className="p-6 border-t border-slate-200 bg-slate-50">

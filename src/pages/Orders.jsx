@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { Search, Filter, Download, CheckCircle, Clock, XCircle, AlertCircle, Printer } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
+import { useRealtime } from '../context/RealtimeContext'
 import SkeletonLoader from '../components/SkeletonLoader'
 
 const Orders = () => {
   const { userProfile } = useAuth()
+  const { lastUpdate } = useRealtime()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -17,18 +19,14 @@ const Orders = () => {
 
   useEffect(() => {
     loadOrders()
-    
-    // Subscribe to real-time updates
-    const subscription = db.subscribeToOrders((payload) => {
-      loadOrders() // Reload orders on any change
-    })
-
-    return () => {
-      if (subscription) {
-        subscription.unsubscribe()
-      }
-    }
   }, [statusFilter, priorityFilter, typeFilter])
+
+  // React to real-time updates from RealtimeContext
+  useEffect(() => {
+    if (lastUpdate.doctor_orders) {
+      loadOrders()
+    }
+  }, [lastUpdate.doctor_orders])
 
   // Separate debounced effect for search
   useEffect(() => {
@@ -71,22 +69,93 @@ const Orders = () => {
 
   const handleStatusUpdate = async (orderId, newStatus) => {
     try {
+      // Find the current order to validate transition before attempting update
+      const currentOrder = orders.find(order => order.id === orderId)
+      if (!currentOrder) {
+        alert('Order not found')
+        return
+      }
+
+      // Validate status transition on the client side for immediate feedback
+      try {
+        db.validateStatusTransition(currentOrder.status, newStatus)
+      } catch (validationError) {
+        // Show user-friendly validation message
+        const friendlyMessage = getFriendlyValidationMessage(currentOrder.status, newStatus)
+        alert(friendlyMessage)
+        return
+      }
+
+      // Optimistically update the UI immediately
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, status: newStatus, updating: true }
+            : order
+        )
+      )
+
       await db.updateOrderStatus(orderId, newStatus, userProfile.id)
-      await loadOrders()
-      alert('Order status updated successfully')
+      
+      // Remove the updating flag after successful update
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === orderId 
+            ? { ...order, updating: false }
+            : order
+        )
+      )
+      
+      // The real-time subscription will handle the actual data refresh
+      // so we don't need to manually reload here
+      
     } catch (error) {
       console.error('Error updating order status:', error)
-      alert('Failed to update order status: ' + error.message)
+      
+      // Revert the optimistic update on error
+      await loadOrders()
+      
+      // Show user-friendly error message
+      const errorMessage = error.message.includes('Invalid status transition') 
+        ? error.message 
+        : 'Failed to update order status: ' + error.message
+      alert(errorMessage)
     }
   }
 
+  const getFriendlyValidationMessage = (currentStatus, newStatus) => {
+    const statusLabels = {
+      pending: 'Pending',
+      in_progress: 'In Progress', 
+      completed: 'Completed',
+      cancelled: 'Cancelled'
+    }
+
+    const current = statusLabels[currentStatus] || currentStatus
+    const target = statusLabels[newStatus] || newStatus
+
+    if (currentStatus === 'completed') {
+      return `Cannot change status from ${current} to ${target}. Completed orders cannot be modified.`
+    }
+    
+    if (currentStatus === 'cancelled') {
+      return `Cannot change status from ${current} to ${target}. Cancelled orders cannot be modified.`
+    }
+
+    if (currentStatus === 'pending' && newStatus === 'completed') {
+      return `Cannot change status directly from ${current} to ${target}. Orders must go through "In Progress" first.`
+    }
+
+    return `Invalid status transition: Cannot change from ${current} to ${target}.`
+  }
+
   const handleExportCSV = () => {
-    // Prepare CSV data
+    // Prepare CSV data from currently displayed orders
     const headers = ['Patient', 'Order Type', 'Details', 'Priority', 'Status', 'Created At', 'Created By']
-    const rows = filteredOrders.map(order => [
-      `${order.patient?.first_name} ${order.patient?.last_name}`,
+    const rows = orders.map(order => [
+      `${order.patient?.first_name || ''} ${order.patient?.last_name || ''}`.trim() || 'Unknown Patient',
       order.order_type,
-      order.order_details,
+      order.order_details || '',
       order.priority,
       order.status,
       new Date(order.created_at).toLocaleString(),
@@ -94,16 +163,16 @@ const Orders = () => {
     ])
 
     const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      headers.map(header => `"${header}"`).join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n')
 
     // Download CSV
-    const blob = new Blob([csvContent], { type: 'text/csv' })
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `orders-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = `orders-export-${new Date().toISOString().split('T')[0]}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   }
@@ -150,8 +219,8 @@ const Orders = () => {
     routine: 'Routine'
   }
 
-  // Filter orders based on search term
-  const filteredOrders = orders
+  // Orders are already filtered server-side based on current filters
+  const displayedOrders = orders
 
   const handleToggleStatus = (status) => {
     if (statusFilter.includes(status)) {
@@ -324,7 +393,7 @@ const Orders = () => {
 
         <div className="flex items-center justify-between pt-2 border-t border-slate-200">
           <p className="text-sm text-slate-600">
-            Showing <span className="font-semibold">{filteredOrders.length}</span> order{filteredOrders.length !== 1 ? 's' : ''}
+            Showing <span className="font-semibold">{displayedOrders.length}</span> order{displayedOrders.length !== 1 ? 's' : ''}
           </p>
           <button
             onClick={loadOrders}
@@ -337,7 +406,7 @@ const Orders = () => {
 
       {/* Orders Table */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        {filteredOrders.length === 0 ? (
+        {displayedOrders.length === 0 ? (
           <div className="text-center py-12">
             <Filter size={48} className="mx-auto text-slate-300 mb-3" />
             <p className="text-slate-600 font-semibold">No orders found</p>
@@ -358,7 +427,7 @@ const Orders = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {filteredOrders.map((order) => {
+                {displayedOrders.map((order) => {
                   const StatusIcon = statusIcons[order.status]
                   return (
                     <tr 
@@ -419,14 +488,51 @@ const Orders = () => {
                             handleStatusUpdate(order.id, e.target.value)
                           }}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                          disabled={order.status === 'completed' || order.status === 'cancelled'}
+                          className={`text-sm border border-slate-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                            order.updating ? 'opacity-50 cursor-wait' : ''
+                          } ${
+                            order.status === 'completed' || order.status === 'cancelled' 
+                              ? 'bg-slate-100 cursor-not-allowed' 
+                              : 'bg-white'
+                          }`}
+                          disabled={order.status === 'completed' || order.status === 'cancelled' || order.updating}
+                          title={
+                            order.status === 'completed' 
+                              ? 'Completed orders cannot be modified'
+                              : order.status === 'cancelled'
+                              ? 'Cancelled orders cannot be modified'
+                              : 'Change order status'
+                          }
                         >
                           <option value="pending">Pending</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="completed">Completed</option>
-                          <option value="cancelled">Cancelled</option>
+                          <option 
+                            value="in_progress"
+                            disabled={order.status === 'completed' || order.status === 'cancelled'}
+                          >
+                            In Progress
+                          </option>
+                          <option 
+                            value="completed"
+                            disabled={order.status === 'pending' || order.status === 'completed' || order.status === 'cancelled'}
+                            title={order.status === 'pending' ? 'Must go through "In Progress" first' : ''}
+                          >
+                            Completed
+                          </option>
+                          <option 
+                            value="cancelled"
+                            disabled={order.status === 'completed' || order.status === 'cancelled'}
+                          >
+                            Cancelled
+                          </option>
                         </select>
+                        {order.updating && (
+                          <div className="text-xs text-teal-600 mt-1">Updating...</div>
+                        )}
+                        {(order.status === 'completed' || order.status === 'cancelled') && (
+                          <div className="text-xs text-slate-500 mt-1">
+                            {order.status === 'completed' ? 'Order completed' : 'Order cancelled'}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )

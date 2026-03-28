@@ -47,7 +47,7 @@ function AppContent() {
   }, [])
 
   // Check if current route is public booking page
-  const isPublicBooking = window.location.pathname === '/book' || window.location.hash === '#/book'
+  const isPublicBooking = window.location.pathname === '/book' || window.location.pathname === '/booking' || window.location.hash === '#/book' || window.location.hash === '#/booking'
   const isPublicSurvey = window.location.pathname === '/survey' || window.location.hash === '#/survey'
 
   // Minimum loading screen display time (1.5 seconds)
@@ -113,7 +113,7 @@ function AppContent() {
     } else if (role === 'doctor') {
       return ['dashboard', 'appointments', 'patients', 'inpatients', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports']
     } else if (role === 'receptionist') {
-      return ['dashboard', 'appointments', 'online-bookings', 'patients', 'payments', 'rooms', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports', 'profile']
+      return ['dashboard', 'appointments', 'online-bookings', 'patients', 'inpatients', 'payments', 'rooms', 'services', 'inventory', 'prescriptions', 'orders', 'lab-results', 'reports', 'profile']
     }
     
     return ['dashboard']

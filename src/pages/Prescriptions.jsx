@@ -224,7 +224,7 @@ const Prescriptions = () => {
       })
       
       setPrescriptions(transformedData)
-      setPatients(patientsData)
+      setPatients(patientsData.data || [])
       setDoctors(doctorsData)
     } catch (error) {
       console.error('Error loading data:', error)

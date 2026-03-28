@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Plus, Search, Package, AlertTriangle, Clock, XCircle, Upload, Download } from 'lucide-react'
+import { Plus, Search, Package, AlertTriangle, Clock, XCircle, Upload, Download, FileDown } from 'lucide-react'
 import { useInventory } from '../context/InventoryContext'
 import { db } from '../lib/supabase'
+import { exportInventoryCSV, getWorstCaseStatus } from '../utils/inventoryBatchUtils'
 import SkeletonLoader from '../components/SkeletonLoader'
 import InventorySummaryList from '../components/inventory/InventorySummaryList'
 import BatchDetailPanel from '../components/inventory/BatchDetailPanel'
 import BatchForm from '../components/inventory/BatchForm'
 import ExpiryMonitor from '../components/inventory/ExpiryMonitor'
 import CSVImportModal from '../components/inventory/CSVImportModal'
+import StockAdjustmentModal from '../components/inventory/StockAdjustmentModal'
 
 const INVENTORY_TEMPLATE_ROWS = [
   'item_name,price,stock,unit,category,supplier,reorder_level,batch_number,lot_number,expiration_date,manufacture_date',
@@ -44,12 +46,16 @@ const Inventory = () => {
   const [editingBatch, setEditingBatch] = useState(null)
   const [batchFormMedicine, setBatchFormMedicine] = useState(null)
   const [showImport, setShowImport] = useState(false)
+  const [adjustingBatch, setAdjustingBatch] = useState(null)
 
-  // Stats
+  // Stats — computed from summaries using worst-case status per medicine
   const totalMedicines = summaries.length
   const inStockCount = summaries.filter(s => (s.total_stock ?? 0) > 0).length
+  const outOfStockCount = summaries.filter(s => (s.total_stock ?? 0) === 0).length
   const expiringSoonCount = expiringBatches.length
   const expiredCount = expiredBatches.length
+  const lowStockCount = summaries.filter(s => getWorstCaseStatus(inventory.filter(b => b.name === s.name)) === 'Low Stock').length
+  const criticalCount = summaries.filter(s => getWorstCaseStatus(inventory.filter(b => b.name === s.name)) === 'Critical').length
 
   const selectedBatches = selectedMedicine
     ? inventory.filter(b => b.name === selectedMedicine)
@@ -106,6 +112,20 @@ const Inventory = () => {
     }
   }
 
+  const handleAdjustSave = async (id, newStock, newStatus) => {
+    await db.updateInventoryItem(id, { stock: newStock, status: newStatus })
+    await loadInventory()
+  }
+
+  const handleDispose = async (batch) => {
+    const confirmed = confirm(
+      `Dispose all stock of "${batch.name}" (Batch: ${batch.batch_number ?? 'N/A'})?\n\nThis will set stock to 0 and mark it as Out of Stock.`
+    )
+    if (!confirmed) return
+    await db.updateInventoryItem(batch.id, { stock: 0, status: 'Out of Stock' })
+    await loadInventory()
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -117,9 +137,10 @@ const Inventory = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={downloadInventoryTemplate}
+            title="Download CSV template"
             className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition-colors text-sm"
           >
-            <Download size={16} />
+            <FileDown size={16} />
             CSV Template
           </button>
           <button
@@ -128,6 +149,14 @@ const Inventory = () => {
           >
             <Upload size={16} />
             Import CSV
+          </button>
+          <button
+            onClick={() => exportInventoryCSV(inventory)}
+            title="Export current inventory to CSV"
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-semibold hover:bg-slate-50 transition-colors text-sm"
+          >
+            <Download size={16} />
+            Export CSV
           </button>
           <button
             onClick={() => { setBatchFormMedicine(null); setEditingBatch(null); setShowBatchForm(true) }}
@@ -139,11 +168,11 @@ const Inventory = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Stats Cards — now 7 cards including Out of Stock */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Total Medicines</p>
+            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Total</p>
             <Package size={18} className="text-slate-400" />
           </div>
           <p className="text-3xl font-bold text-slate-900">{totalMedicines}</p>
@@ -157,7 +186,28 @@ const Inventory = () => {
         </div>
         <div className="bg-white rounded-xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Expiring Soon</p>
+            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Low Stock</p>
+            <AlertTriangle size={18} className="text-yellow-500" />
+          </div>
+          <p className={`text-3xl font-bold ${lowStockCount > 0 ? 'text-yellow-500' : 'text-slate-400'}`}>{lowStockCount}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Critical</p>
+            <AlertTriangle size={18} className="text-orange-500" />
+          </div>
+          <p className={`text-3xl font-bold ${criticalCount > 0 ? 'text-orange-500' : 'text-slate-400'}`}>{criticalCount}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Out of Stock</p>
+            <XCircle size={18} className="text-slate-400" />
+          </div>
+          <p className={`text-3xl font-bold ${outOfStockCount > 0 ? 'text-slate-600' : 'text-slate-400'}`}>{outOfStockCount}</p>
+        </div>
+        <div className="bg-white rounded-xl shadow-sm p-5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-slate-600 font-semibold uppercase tracking-wide">Expiring</p>
             <Clock size={18} className="text-amber-500" />
           </div>
           <p className="text-3xl font-bold text-amber-600">{expiringSoonCount}</p>
@@ -209,7 +259,7 @@ const Inventory = () => {
               <select
                 value={categoryFilter}
                 onChange={e => setCategoryFilter(e.target.value)}
-                className="px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+                className="px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm min-w-0 max-w-[200px]"
               >
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
@@ -233,6 +283,7 @@ const Inventory = () => {
               <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <InventorySummaryList
                   summaries={summaries}
+                  inventory={inventory}
                   selectedMedicine={selectedMedicine}
                   onSelect={name => setSelectedMedicine(prev => prev === name ? null : name)}
                   searchTerm={searchTerm}
@@ -247,6 +298,7 @@ const Inventory = () => {
                   onAddBatch={handleAddBatch}
                   onEditBatch={handleEditBatch}
                   onDeleteBatch={handleDeleteBatch}
+                  onAdjustBatch={batch => setAdjustingBatch(batch)}
                   onClose={() => setSelectedMedicine(null)}
                 />
               )}
@@ -259,6 +311,7 @@ const Inventory = () => {
         <ExpiryMonitor
           expiringBatches={expiringBatches}
           expiredBatches={expiredBatches}
+          onDispose={handleDispose}
         />
       )}
 
@@ -278,6 +331,15 @@ const Inventory = () => {
           inventory={inventory}
           onClose={() => setShowImport(false)}
           onImportComplete={() => { loadInventory(); setShowImport(false); }}
+        />
+      )}
+
+      {/* Stock Adjustment Modal */}
+      {adjustingBatch && (
+        <StockAdjustmentModal
+          batch={adjustingBatch}
+          onClose={() => setAdjustingBatch(null)}
+          onSave={handleAdjustSave}
         />
       )}
     </div>

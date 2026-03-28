@@ -21,7 +21,8 @@ export const RealtimeProvider = ({ children }) => {
     prescriptions: null,
     online_bookings: null,
     doctors: null,
-    services: null
+    services: null,
+    doctor_orders: null
   })
 
   const [isConnected, setIsConnected] = useState(false)
@@ -100,6 +101,14 @@ export const RealtimeProvider = ({ children }) => {
         { event: '*', schema: 'public', table: 'services' },
         (payload) => {
           setLastUpdate(prev => ({ ...prev, services: new Date() }))
+        }
+      )
+      
+      // Doctor Orders table
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'doctor_orders' },
+        (payload) => {
+          setLastUpdate(prev => ({ ...prev, doctor_orders: new Date() }))
         }
       )
       

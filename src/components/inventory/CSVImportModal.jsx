@@ -1,10 +1,18 @@
 import { useState, useRef } from 'react'
 import { X, Upload, FileText, CheckCircle, AlertTriangle, Download } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { buildExistingKeySet, isDuplicate } from '../../utils/inventoryBatchUtils'
+import { buildExistingKeySet, isDuplicate, computeStatus } from '../../utils/inventoryBatchUtils'
 import { parseCSVLine } from '../../utils/csvParser'
 
 const REQUIRED_COLS = ['item_name', 'price', 'stock', 'unit']
+
+function chunk(arr, size) {
+  const chunks = []
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size))
+  }
+  return chunks
+}
 
 const TEMPLATE_ROWS = [
   'item_name,price,stock,unit,category,supplier,reorder_level,batch_number,lot_number,expiration_date,manufacture_date',
@@ -79,52 +87,61 @@ const CSVImportModal = ({ inventory, onImportComplete, onClose }) => {
     let inserted = 0, skipped = 0, failed = 0
     const total = rows.length
 
+    // Build toInsert array after dedup
+    const toInsert = []
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
-      try {
-        if (isDuplicate(row, keySet)) { skipped++; continue }
-        // Use index to guarantee uniqueness when batch_number is auto-generated
-        const batchNum = row.batch_number?.trim() || `BATCH-${Date.now()}-${i.toString().padStart(4, '0')}`
-        // Pre-register this row's keys so later rows in the same CSV don't collide
-        const name = (row.item_name ?? '').toLowerCase()
-        keySet.batchKeys.add(`${name}|${batchNum}`)
-        keySet.naturalKeys.add(`${name}|${row.lot_number ?? ''}|${row.expiration_date ?? ''}|${row.manufacture_date ?? ''}`)
-        const stockQty = parseInt(row.stock) || 0
-        const reorderLevel = parseInt(row.reorder_level) || 10
-        let status = 'In Stock'
-        if (stockQty === 0) status = 'Out of Stock'
-        else if (stockQty <= reorderLevel * 0.3) status = 'Critical'
-        else if (stockQty <= reorderLevel) status = 'Low Stock'
+      if (isDuplicate(row, keySet)) { skipped++; continue }
+      // Use index to guarantee uniqueness when batch_number is auto-generated
+      const batchNum = row.batch_number?.trim() || `BATCH-${Date.now()}-${i.toString().padStart(4, '0')}`
+      // Pre-register this row's keys so later rows in the same CSV don't collide
+      const name = (row.item_name ?? '').toLowerCase()
+      keySet.batchKeys.add(`${name}|${batchNum}`)
+      keySet.naturalKeys.add(`${name}|${row.lot_number ?? ''}|${row.expiration_date ?? ''}|${row.manufacture_date ?? ''}`)
+      const stockQty = parseInt(row.stock) || 0
+      const reorderLevel = parseInt(row.reorder_level) || 10
+      const expirationDate = parseDate(row.expiration_date)
+      toInsert.push({
+        name: row.item_name,
+        category: row.category || 'Anti-Infectives',
+        unit: row.unit,
+        price: parseFloat(row.price) || 0,
+        supplier: row.supplier || '',
+        stock: stockQty,
+        reorder_level: reorderLevel,
+        status: computeStatus(stockQty, reorderLevel, expirationDate),
+        batch_number: batchNum,
+        lot_number: row.lot_number || null,
+        expiration_date: expirationDate,
+        manufacture_date: parseDate(row.manufacture_date),
+      })
+    }
 
-        const item = {
-          name: row.item_name,
-          category: row.category || 'Anti-Infectives',
-          unit: row.unit,
-          price: parseFloat(row.price) || 0,
-          supplier: row.supplier || '',
-          stock: stockQty,
-          reorder_level: reorderLevel,
-          status,
-          batch_number: batchNum,
-          lot_number: row.lot_number || null,
-          expiration_date: parseDate(row.expiration_date),
-          manufacture_date: parseDate(row.manufacture_date),
-        }
-        const { error } = await supabase.from('inventory').insert([item])
-
-        if (error) {
-          // 23505 = unique_violation — treat as skipped duplicate
-          if (error.code === '23505') {
-            skipped++
-          } else {
+    // Insert in chunks of 50
+    for (const chunkItems of chunk(toInsert, 50)) {
+      const { error } = await supabase.from('inventory').insert(chunkItems)
+      if (!error) {
+        inserted += chunkItems.length
+      } else if (error.code === '23505') {
+        // Unique violation — fall back to row-by-row for this chunk
+        for (const item of chunkItems) {
+          try {
+            const { error: rowError } = await supabase.from('inventory').insert([item])
+            if (!rowError) {
+              inserted++
+            } else if (rowError.code === '23505') {
+              skipped++
+            } else {
+              failed++
+              console.error('Row failed:', rowError.message, item)
+            }
+          } catch {
             failed++
-            console.error('Row failed:', error.message, item)
           }
-        } else {
-          inserted++
         }
-      } catch {
-        failed++
+      } else {
+        failed += chunkItems.length
+        console.error('Chunk failed:', error.message)
       }
     }
 
