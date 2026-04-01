@@ -3,34 +3,29 @@ import { Calendar, Activity, ClipboardList, FileText, TestTube, DollarSign, Bed,
 import { db } from '../lib/supabase'
 import SkeletonLoader from './SkeletonLoader'
 
-const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
+const MedicalHistoryTimeline = ({ patientId, className = '', preloadedData = null }) => {
   const [timelineEvents, setTimelineEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    if (patientId) {
+    if (preloadedData) {
+      // Use pre-loaded data from parent — no extra queries needed
+      buildTimeline(
+        preloadedData.consultations || [],
+        preloadedData.appointments || [],
+        preloadedData.orders || [],
+        preloadedData.payments || [],
+        preloadedData.admissions || []
+      )
+      setLoading(false)
+    } else if (patientId) {
       loadTimelineData()
     }
-  }, [patientId])
+  }, [patientId, preloadedData])
 
-  const loadTimelineData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Load all medical events in parallel
-      const [consultations, appointments, orders, labResults, payments, admissions] = await Promise.all([
-        db.getConsultations(patientId).catch(() => []),
-        db.getAppointmentsByPatient(patientId).catch(() => []),
-        db.getOrdersByPatient(patientId).catch(() => []),
-        // Lab results would be loaded here if available
-        Promise.resolve([]),
-        db.getBillingByPatient(patientId).catch(() => []),
-        db.getInpatientsByPatient(patientId).catch(() => [])
-      ])
-
-      // Create lookup maps for better SOAP order integration
+  const buildTimeline = (consultations, appointments, orders, payments, admissions) => {
+      // Create lookup maps for SOAP order integration
       const consultationMap = new Map(consultations.map(c => [c.appointment_id, c]))
       const appointmentMap = new Map(appointments.map(a => [a.id, a]))
 
@@ -169,6 +164,23 @@ const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
       events.sort((a, b) => b.date - a.date)
 
       setTimelineEvents(events)
+  }
+
+  const loadTimelineData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const [consultations, appointments, orders, , payments, admissions] = await Promise.all([
+        db.getConsultations(patientId).catch(() => []),
+        db.getAppointmentsByPatient(patientId).catch(() => []),
+        db.getOrdersByPatient(patientId).catch(() => []),
+        Promise.resolve([]),
+        db.getBillingByPatient(patientId).catch(() => []),
+        db.getInpatientsByPatient(patientId).catch(() => [])
+      ])
+
+      buildTimeline(consultations, appointments, orders, payments, admissions)
     } catch (err) {
       console.error('Error loading timeline data:', err)
       setError('Failed to load medical history timeline')

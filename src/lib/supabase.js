@@ -192,10 +192,26 @@ export const db = {
   },
 
   async generatePatientNumber() {
-    const { count } = await supabase
+    // Use MAX instead of COUNT to avoid race conditions with concurrent registrations
+    const { data, error } = await supabase
       .from('patients')
-      .select('*', { count: 'exact', head: true })
-    return `P${String((count || 0) + 1).padStart(6, '0')}`
+      .select('patient_number')
+      .order('patient_number', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows found (first patient)
+      throw error
+    }
+
+    if (!data) {
+      return 'P000001'
+    }
+
+    // Extract numeric part and increment
+    const lastNum = parseInt(data.patient_number?.replace('P', '') || '0', 10)
+    return `P${String(lastNum + 1).padStart(6, '0')}`
   },
 
   // ==================== DOCTORS ====================
@@ -287,7 +303,7 @@ export const db = {
   },
 
   // ==================== CONSULTATIONS ====================
-  async getConsultations(patientId = null) {
+  async getConsultations(patientId = null, limit = 50, offset = 0) {
     let query = supabase
       .from('consultations')
       .select(`
@@ -299,6 +315,9 @@ export const db = {
 
     if (patientId) {
       query = query.eq('patient_id', patientId)
+    } else {
+      // When fetching all consultations (no patient filter), apply pagination
+      query = query.range(offset, offset + limit - 1)
     }
 
     const { data, error } = await query

@@ -9,6 +9,7 @@ import SkeletonLoader from './components/SkeletonLoader'
 import Sidebar from './components/Sidebar'
 import TopBar from './components/TopBar'
 import Login from './pages/Login'
+import { ToastProvider } from './components/Toast'
 
 // Lazy load all pages to enable code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -195,7 +196,9 @@ function App() {
         <NotificationProvider>
           <BillingQueueProvider>
             <InventoryProvider>
-              <AppContent />
+              <ToastProvider>
+                <AppContent />
+              </ToastProvider>
             </InventoryProvider>
           </BillingQueueProvider>
         </NotificationProvider>

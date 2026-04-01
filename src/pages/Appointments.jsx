@@ -73,14 +73,19 @@ const Appointments = () => {
   const [confirmedOrders, setConfirmedOrders] = useState([])
   const [showOrderReview, setShowOrderReview] = useState(false)
 
+  // Initialize view mode once when userProfile loads — don't reset on date changes
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'doctor') {
+        setViewMode('queue')
+      } else {
+        setViewMode('calendar')
+      }
+    }
+  }, [userProfile])
+
   useEffect(() => {
     loadData()
-    // Set view mode based on role (doctor filter is set after doctors load)
-    if (userProfile?.role === 'doctor') {
-      setViewMode('queue')
-    } else {
-      setViewMode('calendar')
-    }
   }, [selectedDate, selectedWeek, userProfile])
 
   // After doctors are loaded, resolve the logged-in doctor's record ID
@@ -649,6 +654,7 @@ const Appointments = () => {
       <FilterBar 
         viewMode={viewMode}
         selectedWeek={selectedWeek}
+        selectedDate={selectedDate}
         selectedDoctor={selectedDoctor}
         statusFilter={statusFilter}
         doctors={doctors}
@@ -658,6 +664,7 @@ const Appointments = () => {
         onTodayClick={handleTodayClick}
         onDoctorChange={setSelectedDoctor}
         onStatusChange={setStatusFilter}
+        onDateChange={setSelectedDate}
         onExport={handleExport}
       />
 

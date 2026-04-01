@@ -5,12 +5,14 @@ import { useAuth } from '../context/AuthContext'
 import { useRealtime } from '../context/RealtimeContext'
 import SkeletonLoader from '../components/SkeletonLoader'
 import MedicalHistoryTimeline from '../components/MedicalHistoryTimeline'
+import { useToast } from '../components/Toast'
 
 const PAGE_SIZE = 20
 
 const Patients = () => {
   useAuth()
   const { lastUpdate } = useRealtime()
+  const toast = useToast()
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -80,7 +82,7 @@ const Patients = () => {
       setTotalCount(count)
     } catch (error) {
       console.error('Error loading patients:', error)
-      alert('Failed to load patients')
+      toast.error('Failed to load patients')
     } finally {
       setLoading(false)
     }
@@ -115,7 +117,7 @@ const Patients = () => {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting patients:', error)
-      alert('Failed to export patients')
+      toast.error('Failed to export patients')
     }
   }
 
@@ -146,14 +148,16 @@ const Patients = () => {
 
       if (editingPatient) {
         await db.updatePatient(editingPatient.id, patientData)
+        toast.success('Patient updated successfully')
       } else {
         await db.addPatient(patientData)
+        toast.success('Patient added successfully')
       }
       await loadPatients()
       closeModal()
     } catch (error) {
       console.error('Error saving patient:', error)
-      alert('Failed to save patient: ' + error.message)
+      toast.error('Failed to save patient: ' + error.message)
     }
   }
 
@@ -192,7 +196,7 @@ const Patients = () => {
         await loadPatients()
       } catch (error) {
         console.error('Error deleting patient:', error)
-        alert('Failed to delete patient')
+        toast.error('Failed to delete patient')
       }
     }
   }
@@ -204,24 +208,17 @@ const Patients = () => {
     setLoadingConsultations(true)
     try {
       const [consultationsData, appointmentsData, paymentsData, admissionsData, ordersData] = await Promise.all([
-        db.getConsultations(patient.id),
-        db.getAppointmentsByPatient(patient.id),
-        db.getBillingByPatient(patient.id),
-        db.getInpatientsByPatient(patient.id),
-        db.getOrdersByPatient(patient.id),
+        db.getConsultations(patient.id).catch(err => { console.error('Error loading consultations:', err); return [] }),
+        db.getAppointmentsByPatient(patient.id).catch(err => { console.error('Error loading appointments:', err); return [] }),
+        db.getBillingByPatient(patient.id).catch(err => { console.error('Error loading payments:', err); return [] }),
+        db.getInpatientsByPatient(patient.id).catch(err => { console.error('Error loading admissions:', err); return [] }),
+        db.getOrdersByPatient(patient.id).catch(err => { console.error('Error loading orders:', err); return [] }),
       ])
-      setConsultations(consultationsData || [])
-      setAppointments(appointmentsData || [])
-      setPayments(paymentsData || [])
-      setAdmissions(admissionsData || [])
-      setOrders(ordersData || [])
-    } catch (error) {
-      console.error('Error loading patient history:', error)
-      setConsultations([])
-      setAppointments([])
-      setPayments([])
-      setAdmissions([])
-      setOrders([])
+      setConsultations(consultationsData)
+      setAppointments(appointmentsData)
+      setPayments(paymentsData)
+      setAdmissions(admissionsData)
+      setOrders(ordersData)
     } finally {
       setLoadingConsultations(false)
     }
@@ -679,7 +676,7 @@ const Patients = () => {
               </div>
 
               {/* Tab Bar */}
-              <div className="flex gap-1 mb-6 border-b border-slate-200">
+              <div className="flex gap-1 mb-6 border-b border-slate-200 overflow-x-auto scrollbar-hide">
                 {[
                   { key: 'timeline', label: 'Timeline', count: appointments.length + consultations.length + orders.length + payments.length + admissions.length, icon: Clock },
                   { key: 'appointments', label: 'Appointments', count: appointments.length, icon: Calendar },
@@ -691,7 +688,7 @@ const Patients = () => {
                   <button
                     key={key}
                     onClick={() => setActiveHistoryTab(key)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
+                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
                       activeHistoryTab === key
                         ? 'border-teal-500 text-teal-600'
                         : 'border-transparent text-slate-500 hover:text-slate-700'
@@ -720,6 +717,7 @@ const Patients = () => {
                     <MedicalHistoryTimeline 
                       patientId={viewingPatient.id} 
                       className="bg-slate-50 rounded-xl p-6"
+                      preloadedData={{ consultations, appointments, orders, payments, admissions }}
                     />
                   )}
 
@@ -766,6 +764,49 @@ const Patients = () => {
                         <p className="text-center text-sm text-slate-500 py-8">No consultations recorded yet</p>
                       ) : (
                         <div className="space-y-3">
+                          {/* Vital Signs Trend */}
+                          {(() => {
+                            const vitalsData = consultations
+                              .filter(c => c.vital_signs?.blood_pressure || c.vital_signs?.weight || c.vital_signs?.temperature)
+                              .slice(0, 6)
+                              .reverse()
+                            return (
+                              <div className="bg-white rounded-lg border border-slate-200 p-4 mb-4">
+                                <h4 className="text-sm font-semibold text-slate-700 mb-3">Vital Signs Trend</h4>
+                                {vitalsData.length === 0 ? (
+                                  <p className="text-xs text-slate-400 py-1">No vital signs recorded in consultations yet</p>
+                                ) : (
+                                  <>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="text-slate-500 border-b border-slate-100">
+                                            <th className="text-left py-1 pr-3 font-medium">Date</th>
+                                            <th className="text-left py-1 pr-3 font-medium">BP</th>
+                                            <th className="text-left py-1 pr-3 font-medium">Temp (°C)</th>
+                                            <th className="text-left py-1 pr-3 font-medium">Weight (kg)</th>
+                                            <th className="text-left py-1 font-medium">Pulse</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {vitalsData.map((c, i) => (
+                                            <tr key={c.id} className={`border-b border-slate-50 ${i === vitalsData.length - 1 ? 'font-semibold text-teal-700' : 'text-slate-600'}`}>
+                                              <td className="py-1.5 pr-3">{new Date(c.consultation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.blood_pressure || '—'}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.temperature || '—'}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.weight || '—'}</td>
+                                              <td className="py-1.5">{c.vital_signs?.pulse_rate || c.vital_signs?.heart_rate || '—'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <p className="text-xs text-teal-600 mt-2 font-medium">↑ Most recent visit highlighted</p>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
                           {consultations.map((consultation) => (
                             <div key={consultation.id} className="p-4 bg-white rounded-lg border border-slate-200">
                               <div className="flex items-start justify-between mb-3">
