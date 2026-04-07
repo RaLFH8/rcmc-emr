@@ -1,0 +1,42 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Cruise Ship Management Simulator"
+config/description="A management + navigation hybrid where you captain and manage a cruise line."
+run/main_scene="res://scenes/navigation/NavigationScene.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://assets/textures/ui/icon.svg"
+
+[autoload]
+
+EventBus="*res://autoloads/EventBus.gd"
+WorldClock="*res://autoloads/WorldClock.gd"
+GlobalCoordinateSystem="*res://autoloads/GlobalCoordinateSystem.gd"
+RouteDatabase="*res://autoloads/RouteDatabase.gd"
+WeatherSystem="*res://autoloads/WeatherSystem.gd"
+SeasonalDemand="*res://autoloads/SeasonalDemand.gd"
+InventorySystem="*res://autoloads/InventorySystem.gd"
+EconomyManager="*res://autoloads/EconomyManager.gd"
+PassengerManager="*res://autoloads/PassengerManager.gd"
+StaffManager="*res://autoloads/StaffManager.gd"
+DeckGridManager="*res://autoloads/DeckGridManager.gd"
+CompetitorManager="*res://autoloads/CompetitorManager.gd"
+ProgressionSystem="*res://autoloads/ProgressionSystem.gd"
+LegacySystem="*res://autoloads/LegacySystem.gd"
+MultiplayerManager="*res://autoloads/MultiplayerManager.gd"
+UIManager="*res://autoloads/UIManager.gd"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
