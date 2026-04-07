@@ -1,0 +1,50 @@
+{
+  "id": "sang_nila_utama",
+  "name": "Sang Nila Utama",
+  "faction": "singapore",
+  "dlc_tier": 0,
+  "price_usd": 0.0,
+  "historical_period": "c. 1299",
+  "lore": "The legendary Srivijayan prince who founded the city of Singapura (Singapore) after seeing a lion on the island. His vision transformed a small fishing village into a great trading port that would become a modern fortress.",
+  "hp": 260,
+  "attack": 32,
+  "attack_range": 200,
+  "attack_speed": 1.1,
+  "move_speed": 92,
+  "armor_type": "hero",
+  "damage_type": "small_arms",
+  "vision_range": 320,
+  "supply_cost": 0,
+  "abilities": [
+    {
+      "id": "lion_city_sight",
+      "name": "Lion City Sight",
+      "type": "passive",
+      "description": "Sang Nila Utama has +60 vision range. All Defense Towers within 400 tiles gain +15% range.",
+      "vision_bonus": 60,
+      "tower_range_bonus": 0.15,
+      "tower_radius": 400
+    },
+    {
+      "id": "fortify_position",
+      "name": "Fortify Position",
+      "type": "active",
+      "description": "Instantly constructs a temporary Defense Tower at target location. Tower lasts 45 seconds and has 50% of normal HP.",
+      "cooldown": 28.0,
+      "tower_duration": 45.0,
+      "tower_hp_percent": 0.50,
+      "manpower_cost": 30
+    },
+    {
+      "id": "singapura_bastion",
+      "name": "Singapura Bastion",
+      "type": "ultimate",
+      "description": "All allied Defense Towers in a 500-tile radius become invulnerable for 12 seconds and deal 2x damage.",
+      "cooldown": 70.0,
+      "radius": 500,
+      "duration": 12.0,
+      "damage_multiplier": 2.0,
+      "manpower_cost": 65
+    }
+  ]
+}

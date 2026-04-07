@@ -1,9 +1,10 @@
-import { Filter, Download } from 'lucide-react'
+import { Filter, Download, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import DateNavigator from './DateNavigator'
 
 const FilterBar = ({
   viewMode,
   selectedWeek,
+  selectedDate,
   selectedDoctor,
   statusFilter,
   doctors,
@@ -13,8 +14,45 @@ const FilterBar = ({
   onTodayClick,
   onDoctorChange,
   onStatusChange,
+  onDateChange,
   onExport
 }) => {
+  // Parse YYYY-MM-DD safely without timezone shifting
+  const parseDateLocal = (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number)
+    return new Date(y, m - 1, d)
+  }
+
+  const toDateStr = (d) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+  }
+
+  const handlePrevDay = () => {
+    if (!selectedDate) return
+    const d = parseDateLocal(selectedDate)
+    d.setDate(d.getDate() - 1)
+    onDateChange?.(toDateStr(d))
+  }
+
+  const handleNextDay = () => {
+    if (!selectedDate) return
+    const d = parseDateLocal(selectedDate)
+    d.setDate(d.getDate() + 1)
+    onDateChange?.(toDateStr(d))
+  }
+
+  const handleTodayQueue = () => {
+    onDateChange?.(toDateStr(new Date()))
+  }
+
+  const formatQueueDate = () => {
+    if (!selectedDate) return ''
+    const d = parseDateLocal(selectedDate)
+    return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  }
   return (
     <div className="bg-white rounded-xl shadow-sm p-6">
       <div className="flex flex-wrap items-center gap-4">
@@ -45,6 +83,33 @@ const FilterBar = ({
             onWeekChange={onWeekChange}
             onTodayClick={onTodayClick}
           />
+        )}
+
+        {/* Date Navigator (Queue View only) */}
+        {viewMode === 'queue' && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-teal-50 px-4 py-2 rounded-lg">
+              <Calendar size={18} className="text-teal-600" />
+              <span className="font-semibold text-slate-900 text-sm">{formatQueueDate()}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button onClick={handlePrevDay} className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Previous Day">
+                <ChevronLeft size={20} className="text-slate-600" />
+              </button>
+              <button onClick={handleTodayQueue} className="px-3 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-sm font-semibold text-slate-700 transition-colors">
+                Today
+              </button>
+              <button onClick={handleNextDay} className="p-2 hover:bg-slate-100 rounded-lg transition-colors" title="Next Day">
+                <ChevronRight size={20} className="text-slate-600" />
+              </button>
+            </div>
+            <input
+              type="date"
+              value={selectedDate || ''}
+              onChange={(e) => onDateChange?.(e.target.value)}
+              className="px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-sm"
+            />
+          </div>
         )}
 
         {/* Doctor Filter */}

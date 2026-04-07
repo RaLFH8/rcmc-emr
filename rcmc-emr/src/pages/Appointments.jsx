@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { Plus, User, X, CheckCircle, PlayCircle, FileText, History, Globe, UserPlus } from 'lucide-react'
+import { Plus, User, X, CheckCircle, PlayCircle, FileText, History, Globe, UserPlus, Activity } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import SkeletonLoader from '../components/SkeletonLoader'
@@ -10,6 +10,8 @@ import FilterBar from '../components/FilterBar'
 import OrderReviewPanel from '../components/OrderReviewPanel'
 import MedicalHistoryTimeline from '../components/MedicalHistoryTimeline'
 import { parseOrders } from '../utils/orderParser'
+import VitalSignsForm from '../components/VitalSignsForm'
+import VitalSignsBadge from '../components/VitalSignsBadge'
 
 // Format a Date to local YYYY-MM-DD (timezone-safe)
 const toLocalDateStr = (d) => {
@@ -73,14 +75,25 @@ const Appointments = () => {
   const [confirmedOrders, setConfirmedOrders] = useState([])
   const [showOrderReview, setShowOrderReview] = useState(false)
 
+  // Vitals state
+  const [vitalsMap, setVitalsMap] = useState({}) // appointmentId -> vitals record or null
+  const [vitalsModalApt, setVitalsModalApt] = useState(null)
+  const [soapVitals, setSoapVitals] = useState(null)
+  const [soapVitalsLoading, setSoapVitalsLoading] = useState(false)
+
+  // Initialize view mode once when userProfile loads — don't reset on date changes
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'doctor') {
+        setViewMode('queue')
+      } else {
+        setViewMode('calendar')
+      }
+    }
+  }, [userProfile])
+
   useEffect(() => {
     loadData()
-    // Set view mode based on role (doctor filter is set after doctors load)
-    if (userProfile?.role === 'doctor') {
-      setViewMode('queue')
-    } else {
-      setViewMode('calendar')
-    }
   }, [selectedDate, selectedWeek, userProfile])
 
   // After doctors are loaded, resolve the logged-in doctor's record ID
@@ -182,8 +195,24 @@ const Appointments = () => {
       ])
       
       setAppointments(allAppointments)
-      setPatients(patientsData)
+      setPatients(patientsData.data || [])
       setDoctors(doctorsData)
+
+      // Batch-fetch vitals for all loaded appointments
+      const ids = allAppointments.map(a => a.id).filter(Boolean)
+      if (ids.length > 0) {
+        try {
+          const map = await db.getVitalsByAppointmentIds(ids)
+          const obj = {}
+          map.forEach((v, k) => { obj[k] = v })
+          setVitalsMap(obj)
+        } catch (err) {
+          console.error('Error fetching vitals map:', err)
+          setVitalsMap({})
+        }
+      } else {
+        setVitalsMap({})
+      }
     } catch (error) {
       console.error('Error loading data:', error)
       setError('Failed to load appointments. Please try again.')
@@ -311,31 +340,31 @@ const Appointments = () => {
   const handleStartConsultation = async (apt) => {
     setSelectedAppointment(apt)
     
-    // Build vital signs string from patient data
-    let vitalSignsText = ''
-    if (apt.patient) {
-      const vitalSigns = []
-      
-      if (apt.patient.weight) vitalSigns.push(`Weight: ${apt.patient.weight} kg`)
-      if (apt.patient.blood_pressure) vitalSigns.push(`BP: ${apt.patient.blood_pressure} mmHg`)
-      if (apt.patient.temperature) vitalSigns.push(`Temp: ${apt.patient.temperature}°C`)
-      if (apt.patient.heart_rate) vitalSigns.push(`HR: ${apt.patient.heart_rate} bpm`)
-      if (apt.patient.respiratory_rate) vitalSigns.push(`RR: ${apt.patient.respiratory_rate}/min`)
-      if (apt.patient.oxygen_saturation) vitalSigns.push(`O2 Sat: ${apt.patient.oxygen_saturation}%`)
-      
-      if (vitalSigns.length > 0) {
-        vitalSignsText = vitalSigns.join(', ') + '\n\n'
-      }
-    }
-    
-    // Load existing SOAP data from database if present, otherwise use appointment reason and vital signs
+    // Load existing SOAP data from database if present, otherwise use appointment reason
     setSoapData({
       subjective: apt.soap_subjective || apt.reason || '',
-      objective: apt.soap_objective || vitalSignsText,
+      objective: apt.soap_objective || '',
       assessment: apt.soap_assessment || '',
       plan: apt.soap_plan || ''
     })
     setShowSoapModal(true)
+
+    // Fetch vitals for the SOAP objective section
+    setSoapVitals(null)
+    setSoapVitalsLoading(true)
+    try {
+      let vitals = await db.getVitalsByAppointment(apt.id)
+      if (!vitals && apt.patient_id) {
+        const prior = await db.getVitalsByPatient(apt.patient_id)
+        vitals = prior && prior.length > 0 ? { ...prior[0], _isPrior: true } : null
+      }
+      setSoapVitals(vitals)
+    } catch (err) {
+      console.error('Error fetching vitals for SOAP:', err)
+      setSoapVitals(null)
+    } finally {
+      setSoapVitalsLoading(false)
+    }
   }
 
   const handleViewMedicalHistory = async () => {
@@ -649,6 +678,7 @@ const Appointments = () => {
       <FilterBar 
         viewMode={viewMode}
         selectedWeek={selectedWeek}
+        selectedDate={selectedDate}
         selectedDoctor={selectedDoctor}
         statusFilter={statusFilter}
         doctors={doctors}
@@ -658,6 +688,7 @@ const Appointments = () => {
         onTodayClick={handleTodayClick}
         onDoctorChange={setSelectedDoctor}
         onStatusChange={setStatusFilter}
+        onDateChange={setSelectedDate}
         onExport={handleExport}
       />
 
@@ -695,6 +726,24 @@ const Appointments = () => {
                       {renderBookingSourceBadge(apt.booking_source || 'walk-in')}
                     </div>
                     <p className="text-xs text-slate-600 mb-3">{apt.reason}</p>
+                    {/* Record Vitals button */}
+                    {(userProfile?.role === 'admin' || userProfile?.role === 'doctor' || userProfile?.role === 'receptionist') && (
+                      <div className="mb-2">
+                        {vitalsMap[apt.id] ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-md text-xs font-semibold">
+                            <CheckCircle size={12} /> Vitals Recorded
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setVitalsModalApt(apt)}
+                            className="px-3 py-1 text-xs font-semibold border border-teal-500 text-teal-600 rounded-md hover:bg-teal-50 transition-colors"
+                          >
+                            <Activity size={12} className="inline mr-1" />
+                            Record Vitals
+                          </button>
+                        )}
+                      </div>
+                    )}
                     {(userProfile?.role === 'doctor' || userProfile?.role === 'admin') && (
                     <button
                       onClick={() => handleStartConsultation(apt)}
@@ -753,6 +802,22 @@ const Appointments = () => {
                             plan: latestApt.soap_plan || ''
                           })
                           setShowSoapModal(true)
+                          // Fetch vitals for SOAP
+                          setSoapVitals(null)
+                          setSoapVitalsLoading(true)
+                          try {
+                            let vitals = await db.getVitalsByAppointment(latestApt.id)
+                            if (!vitals && latestApt.patient_id) {
+                              const prior = await db.getVitalsByPatient(latestApt.patient_id)
+                              vitals = prior && prior.length > 0 ? { ...prior[0], _isPrior: true } : null
+                            }
+                            setSoapVitals(vitals)
+                          } catch (err) {
+                            console.error('Error fetching vitals for SOAP:', err)
+                            setSoapVitals(null)
+                          } finally {
+                            setSoapVitalsLoading(false)
+                          }
                         }}
                         className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-semibold"
                       >
@@ -1166,11 +1231,50 @@ const Appointments = () => {
                 <label className="block text-lg font-bold text-slate-900 mb-2">
                   O - OBJECTIVE (Physical Findings & Vital Signs)
                 </label>
+                {/* Structured vitals panel */}
+                <div className="mb-3">
+                  {soapVitalsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-slate-500 py-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-teal-500 border-t-transparent"></div>
+                      Loading vitals…
+                    </div>
+                  ) : soapVitals && !soapVitals._isPrior ? (
+                    <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-2">
+                      <p className="text-xs font-semibold text-teal-700 mb-3 flex items-center gap-1">
+                        <Activity size={14} /> Vitals recorded for this visit
+                      </p>
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div><span className="text-slate-500 text-xs">BP</span><br /><VitalSignsBadge field="blood_pressure_systolic" value={soapVitals.blood_pressure_systolic} /><span className="text-slate-400">/</span><VitalSignsBadge field="blood_pressure_diastolic" value={soapVitals.blood_pressure_diastolic} unit="mmHg" /></div>
+                        <div><span className="text-slate-500 text-xs">HR</span><br /><VitalSignsBadge field="heart_rate" value={soapVitals.heart_rate} unit="bpm" /></div>
+                        <div><span className="text-slate-500 text-xs">Temp</span><br /><VitalSignsBadge field="temperature" value={soapVitals.temperature} unit="°C" /></div>
+                        <div><span className="text-slate-500 text-xs">RR</span><br /><VitalSignsBadge field="respiratory_rate" value={soapVitals.respiratory_rate} unit="/min" /></div>
+                        <div><span className="text-slate-500 text-xs">O₂ Sat</span><br /><VitalSignsBadge field="oxygen_saturation" value={soapVitals.oxygen_saturation} unit="%" /></div>
+                        <div><span className="text-slate-500 text-xs">Weight</span><br /><VitalSignsBadge field="weight" value={soapVitals.weight} unit="kg" /></div>
+                      </div>
+                    </div>
+                  ) : soapVitals && soapVitals._isPrior ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-2">
+                      <p className="text-xs font-semibold text-amber-700 mb-3">
+                        Reference: vitals from {new Date(soapVitals.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (prior visit)
+                      </p>
+                      <div className="grid grid-cols-3 gap-3 text-sm">
+                        <div><span className="text-slate-500 text-xs">BP</span><br /><VitalSignsBadge field="blood_pressure_systolic" value={soapVitals.blood_pressure_systolic} /><span className="text-slate-400">/</span><VitalSignsBadge field="blood_pressure_diastolic" value={soapVitals.blood_pressure_diastolic} unit="mmHg" /></div>
+                        <div><span className="text-slate-500 text-xs">HR</span><br /><VitalSignsBadge field="heart_rate" value={soapVitals.heart_rate} unit="bpm" /></div>
+                        <div><span className="text-slate-500 text-xs">Temp</span><br /><VitalSignsBadge field="temperature" value={soapVitals.temperature} unit="°C" /></div>
+                        <div><span className="text-slate-500 text-xs">RR</span><br /><VitalSignsBadge field="respiratory_rate" value={soapVitals.respiratory_rate} unit="/min" /></div>
+                        <div><span className="text-slate-500 text-xs">O₂ Sat</span><br /><VitalSignsBadge field="oxygen_saturation" value={soapVitals.oxygen_saturation} unit="%" /></div>
+                        <div><span className="text-slate-500 text-xs">Weight</span><br /><VitalSignsBadge field="weight" value={soapVitals.weight} unit="kg" /></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 mb-2">No vitals on file for this patient</p>
+                  )}
+                </div>
                 <textarea
                   value={soapData.objective}
                   onChange={(e) => setSoapData({...soapData, objective: e.target.value})}
-                  rows="5"
-                  placeholder="BP: 120/80 mmHg, Temp: 36.5°C, HR: 72 bpm, RR: 16/min&#10;Physical examination findings, lab results, vital signs..."
+                  rows="4"
+                  placeholder="Additional physical examination findings, lab results..."
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
@@ -1648,6 +1752,42 @@ const Appointments = () => {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Vitals Modal */}
+      {vitalsModalApt && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Record Vital Signs</h2>
+                <p className="text-sm text-slate-600 mt-1">
+                  {vitalsModalApt.patient?.first_name} {vitalsModalApt.patient?.last_name}
+                </p>
+              </div>
+              <button onClick={() => setVitalsModalApt(null)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <VitalSignsForm
+                patientId={vitalsModalApt.patient_id}
+                appointmentId={vitalsModalApt.id}
+                initialValues={vitalsMap[vitalsModalApt.id] || {}}
+                mode="appointments"
+                onSuccess={async () => {
+                  try {
+                    const updated = await db.getVitalsByAppointment(vitalsModalApt.id)
+                    setVitalsMap(prev => ({ ...prev, [vitalsModalApt.id]: updated }))
+                  } catch (err) {
+                    console.error('Error refreshing vitals:', err)
+                  }
+                  setVitalsModalApt(null)
+                }}
+                onCancel={() => setVitalsModalApt(null)}
+              />
             </div>
           </div>
         </div>

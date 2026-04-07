@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react'
-import { Plus, Search, Edit2, Trash2, X, User, Calendar, FileText, Activity, DollarSign, Bed, Download, ClipboardList, Clock } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { Plus, Search, Edit2, Trash2, X, User, Calendar, FileText, Activity, DollarSign, Bed, Download, ClipboardList, Clock, ChevronLeft, ChevronRight } from 'lucide-react'
 import { db } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useRealtime } from '../context/RealtimeContext'
 import SkeletonLoader from '../components/SkeletonLoader'
 import MedicalHistoryTimeline from '../components/MedicalHistoryTimeline'
+import { useToast } from '../components/Toast'
+import VitalSignsForm from '../components/VitalSignsForm'
+import VitalSignsBadge from '../components/VitalSignsBadge'
 
 const PAGE_SIZE = 20
 
 const Patients = () => {
-  useAuth()
+  const { userProfile } = useAuth()
   const { lastUpdate } = useRealtime()
+  const toast = useToast()
   const [patients, setPatients] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -29,6 +33,33 @@ const Patients = () => {
   const [admissions, setAdmissions] = useState([])
   const [orders, setOrders] = useState([])
   const [loadingConsultations, setLoadingConsultations] = useState(false)
+
+  // Vitals tab state
+  const [patientVitals, setPatientVitals] = useState([])
+  const [vitalsLoading, setVitalsLoading] = useState(false)
+  const [showVitalsForm, setShowVitalsForm] = useState(false)
+  const tabScrollRef = useRef(null)
+  const [editingVitals, setEditingVitals] = useState(null)
+  const [patientAppointmentsForVitals, setPatientAppointmentsForVitals] = useState([])
+
+  // Consultation form state
+  const [showConsultationForm, setShowConsultationForm] = useState(false)
+
+  // Initial vitals state for new patient registration
+  const emptyInitialVitals = { blood_pressure: '', heart_rate: '', temperature: '', respiratory_rate: '', oxygen_saturation: '', weight: '', notes: '' }
+  const [initialVitals, setInitialVitals] = useState(emptyInitialVitals)
+  const [editingConsultation, setEditingConsultation] = useState(null)
+  const [doctors, setDoctors] = useState([])
+  const [consultationFormData, setConsultationFormData] = useState({
+    consultation_date: '',
+    doctor_id: '',
+    chief_complaint: '',
+    objective: '',
+    diagnosis: '',
+    prescription: '',
+    notes: '',
+  })
+  const [savingConsultation, setSavingConsultation] = useState(false)
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
@@ -80,7 +111,7 @@ const Patients = () => {
       setTotalCount(count)
     } catch (error) {
       console.error('Error loading patients:', error)
-      alert('Failed to load patients')
+      toast.error('Failed to load patients')
     } finally {
       setLoading(false)
     }
@@ -115,7 +146,7 @@ const Patients = () => {
       URL.revokeObjectURL(url)
     } catch (error) {
       console.error('Error exporting patients:', error)
-      alert('Failed to export patients')
+      toast.error('Failed to export patients')
     }
   }
 
@@ -146,14 +177,44 @@ const Patients = () => {
 
       if (editingPatient) {
         await db.updatePatient(editingPatient.id, patientData)
+        toast.success('Patient updated successfully')
       } else {
-        await db.addPatient(patientData)
+        const newPatient = await db.addPatient(patientData)
+        toast.success('Patient added successfully')
+        // Save initial vitals if any were entered
+        const hasVitals = Object.entries(initialVitals).some(([k, v]) => k !== 'notes' && v !== '')
+        if (hasVitals && newPatient?.id) {
+          try {
+            const parseBP = (str) => {
+              const m = str?.trim().match(/^(\d+)\s*\/\s*(\d+)$/)
+              return m ? { systolic: parseInt(m[1]), diastolic: parseInt(m[2]) } : null
+            }
+            const bp = parseBP(initialVitals.blood_pressure)
+            const vitalsRecord = {
+              patient_id: newPatient.id,
+              appointment_id: null,
+              recorded_at: new Date().toISOString(),
+              blood_pressure_systolic: bp?.systolic ?? null,
+              blood_pressure_diastolic: bp?.diastolic ?? null,
+              heart_rate: initialVitals.heart_rate ? parseFloat(initialVitals.heart_rate) : null,
+              temperature: initialVitals.temperature ? parseFloat(initialVitals.temperature) : null,
+              respiratory_rate: initialVitals.respiratory_rate ? parseFloat(initialVitals.respiratory_rate) : null,
+              oxygen_saturation: initialVitals.oxygen_saturation ? parseFloat(initialVitals.oxygen_saturation) : null,
+              weight: initialVitals.weight ? parseFloat(initialVitals.weight) : null,
+              notes: initialVitals.notes || null,
+            }
+            await db.upsertVitals(vitalsRecord)
+          } catch (vErr) {
+            console.error('Error saving initial vitals:', vErr)
+            // Non-blocking — patient was saved successfully
+          }
+        }
       }
       await loadPatients()
       closeModal()
     } catch (error) {
       console.error('Error saving patient:', error)
-      alert('Failed to save patient: ' + error.message)
+      toast.error('Failed to save patient: ' + error.message)
     }
   }
 
@@ -192,7 +253,7 @@ const Patients = () => {
         await loadPatients()
       } catch (error) {
         console.error('Error deleting patient:', error)
-        alert('Failed to delete patient')
+        toast.error('Failed to delete patient')
       }
     }
   }
@@ -203,27 +264,140 @@ const Patients = () => {
     setShowHistoryModal(true)
     setLoadingConsultations(true)
     try {
-      const [consultationsData, appointmentsData, paymentsData, admissionsData, ordersData] = await Promise.all([
-        db.getConsultations(patient.id),
-        db.getAppointmentsByPatient(patient.id),
-        db.getBillingByPatient(patient.id),
-        db.getInpatientsByPatient(patient.id),
-        db.getOrdersByPatient(patient.id),
+      const [consultationsData, appointmentsData, paymentsData, admissionsData, ordersData, doctorsData] = await Promise.all([
+        db.getConsultations(patient.id).catch(err => { console.error('Error loading consultations:', err); return [] }),
+        db.getAppointmentsByPatient(patient.id).catch(err => { console.error('Error loading appointments:', err); return [] }),
+        db.getBillingByPatient(patient.id).catch(err => { console.error('Error loading payments:', err); return [] }),
+        db.getInpatientsByPatient(patient.id).catch(err => { console.error('Error loading admissions:', err); return [] }),
+        db.getOrdersByPatient(patient.id).catch(err => { console.error('Error loading orders:', err); return [] }),
+        db.getDoctors().catch(() => []),
       ])
-      setConsultations(consultationsData || [])
-      setAppointments(appointmentsData || [])
-      setPayments(paymentsData || [])
-      setAdmissions(admissionsData || [])
-      setOrders(ordersData || [])
-    } catch (error) {
-      console.error('Error loading patient history:', error)
-      setConsultations([])
-      setAppointments([])
-      setPayments([])
-      setAdmissions([])
-      setOrders([])
+      setConsultations(consultationsData)
+      setAppointments(appointmentsData)
+      setPayments(paymentsData)
+      setAdmissions(admissionsData)
+      setOrders(ordersData)
+      setDoctors(doctorsData)
     } finally {
       setLoadingConsultations(false)
+    }
+  }
+
+  const loadPatientVitals = async (patientId) => {
+    setVitalsLoading(true)
+    try {
+      const data = await db.getVitalsByPatient(patientId)
+      setPatientVitals(data || [])
+    } catch (err) {
+      console.error('Error loading vitals:', err)
+      toast.error('Failed to load vitals')
+    } finally {
+      setVitalsLoading(false)
+    }
+  }
+
+  const handleVitalsTabActivate = async (patient) => {
+    await loadPatientVitals(patient.id)
+  }
+
+  const handleAddVitals = async () => {
+    try {
+      const apts = await db.getAppointmentsByPatient(viewingPatient.id)
+      setPatientAppointmentsForVitals(apts || [])
+    } catch (err) {
+      console.error('Error loading appointments for vitals:', err)
+      setPatientAppointmentsForVitals([])
+    }
+    setEditingVitals(null)
+    setShowVitalsForm(true)
+  }
+
+  const handleEditVitals = async (vitalsRecord) => {
+    try {
+      const apts = await db.getAppointmentsByPatient(viewingPatient.id)
+      setPatientAppointmentsForVitals(apts || [])
+    } catch (err) {
+      setPatientAppointmentsForVitals([])
+    }
+    setEditingVitals(vitalsRecord)
+    setShowVitalsForm(true)
+  }
+
+  const handleDeleteVitals = async (id) => {
+    if (!window.confirm('Delete this vitals record? This cannot be undone.')) return
+    try {
+      await db.deleteVitals(id)
+      await loadPatientVitals(viewingPatient.id)
+    } catch (err) {
+      console.error('Error deleting vitals:', err)
+      toast.error('Failed to delete vitals record')
+    }
+  }
+
+  const toLocalDatetimeValue = (date) => {
+    const d = date ? new Date(date) : new Date()
+    const pad = n => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
+  const handleOpenConsultationForm = (consultation = null) => {
+    if (consultation) {
+      setEditingConsultation(consultation)
+      setConsultationFormData({
+        consultation_date: toLocalDatetimeValue(consultation.consultation_date),
+        doctor_id: consultation.doctor_id || '',
+        chief_complaint: consultation.chief_complaint || '',
+        objective: consultation.vital_signs?.notes || '',
+        diagnosis: consultation.diagnosis || '',
+        prescription: consultation.prescription || '',
+        notes: consultation.notes || '',
+      })
+    } else {
+      setEditingConsultation(null)
+      setConsultationFormData({
+        consultation_date: toLocalDatetimeValue(),
+        doctor_id: '',
+        chief_complaint: '',
+        objective: '',
+        diagnosis: '',
+        prescription: '',
+        notes: '',
+      })
+    }
+    setShowConsultationForm(true)
+  }
+
+  const handleSaveConsultation = async (e) => {
+    e.preventDefault()
+    if (!viewingPatient) return
+    setSavingConsultation(true)
+    try {
+      const record = {
+        patient_id: viewingPatient.id,
+        doctor_id: consultationFormData.doctor_id || null,
+        consultation_date: new Date(consultationFormData.consultation_date).toISOString(),
+        chief_complaint: consultationFormData.chief_complaint || null,
+        vital_signs: consultationFormData.objective ? { notes: consultationFormData.objective } : {},
+        diagnosis: consultationFormData.diagnosis || null,
+        prescription: consultationFormData.prescription || null,
+        notes: consultationFormData.notes || null,
+        status: 'completed',
+      }
+      if (editingConsultation) {
+        await db.updateConsultation(editingConsultation.id, record)
+        toast.success('Consultation updated')
+      } else {
+        await db.addConsultation(record)
+        toast.success('Consultation added')
+      }
+      const updated = await db.getConsultations(viewingPatient.id)
+      setConsultations(updated)
+      setShowConsultationForm(false)
+    } catch (err) {
+      console.error('Error saving consultation:', err)
+      toast.error('Failed to save consultation: ' + err.message)
+    } finally {
+      setSavingConsultation(false)
     }
   }
 
@@ -247,6 +421,7 @@ const Patients = () => {
       weight: '',
       philhealth_number: '',
     })
+    setInitialVitals(emptyInitialVitals)
   }
 
   const calculateAge = (dob) => {
@@ -470,7 +645,7 @@ const Patients = () => {
 
             <form onSubmit={handleSubmit} className="p-6">
               <div className="space-y-6">
-                {/* Personal Information */}
+                {/* 1. Personal Information */}
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">Personal Information</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -519,24 +694,90 @@ const Patients = () => {
                         <option value="O-">O-</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+
+                {/* 2. Initial Vital Signs (new patients only) */}
+                {!editingPatient && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">Initial Vital Signs <span className="text-sm font-normal text-slate-400">(optional)</span></h3>
+                    <p className="text-xs text-slate-500 mb-4">Saved as baseline vitals and shown in the SOAP note Objective section.</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Blood Pressure (mmHg)</label>
+                        <input type="text" value={initialVitals.blood_pressure}
+                          onChange={e => setInitialVitals(p => ({ ...p, blood_pressure: e.target.value }))}
+                          placeholder="e.g. 120/80"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Heart Rate (bpm)</label>
+                        <input type="number" value={initialVitals.heart_rate}
+                          onChange={e => setInitialVitals(p => ({ ...p, heart_rate: e.target.value }))}
+                          placeholder="30–250"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Temperature (°C)</label>
+                        <input type="number" step="0.1" value={initialVitals.temperature}
+                          onChange={e => setInitialVitals(p => ({ ...p, temperature: e.target.value }))}
+                          placeholder="34–42"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Resp. Rate (/min)</label>
+                        <input type="number" value={initialVitals.respiratory_rate}
+                          onChange={e => setInitialVitals(p => ({ ...p, respiratory_rate: e.target.value }))}
+                          placeholder="8–40"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">O₂ Saturation (%)</label>
+                        <input type="number" value={initialVitals.oxygen_saturation}
+                          onChange={e => setInitialVitals(p => ({ ...p, oxygen_saturation: e.target.value }))}
+                          placeholder="70–100"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Weight (kg)</label>
+                        <input type="number" step="0.1" value={initialVitals.weight}
+                          onChange={e => setInitialVitals(p => ({ ...p, weight: e.target.value }))}
+                          placeholder="1–300"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>
+                        <textarea value={initialVitals.notes}
+                          onChange={e => setInitialVitals(p => ({ ...p, notes: e.target.value }))}
+                          rows={2} placeholder="Additional observations..."
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Medical Information */}
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Medical Information</h3>
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Height (cm)</label>
-                      <input type="number" step="0.1" value={formData.height}
-                        onChange={(e) => setFormData({...formData, height: e.target.value})}
-                        placeholder="e.g., 165"
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Allergies</label>
+                      <textarea value={formData.allergies}
+                        onChange={(e) => setFormData({...formData, allergies: e.target.value})}
+                        rows="2" placeholder="List any known allergies..."
                         className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Weight (kg)</label>
-                      <input type="number" step="0.1" value={formData.weight}
-                        onChange={(e) => setFormData({...formData, weight: e.target.value})}
-                        placeholder="e.g., 65"
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Medical History</label>
+                      <textarea value={formData.medical_history}
+                        onChange={(e) => setFormData({...formData, medical_history: e.target.value})}
+                        rows="3" placeholder="Previous conditions, surgeries, chronic illnesses..."
                         className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
                     </div>
                   </div>
                 </div>
 
-                {/* Contact Information */}
+                {/* 4. Contact Information */}
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">Contact Information</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -569,28 +810,7 @@ const Patients = () => {
                   </div>
                 </div>
 
-                {/* Medical Information */}
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-4">Medical Information</h3>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Allergies</label>
-                      <textarea value={formData.allergies}
-                        onChange={(e) => setFormData({...formData, allergies: e.target.value})}
-                        rows="2" placeholder="List any known allergies..."
-                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-2">Medical History</label>
-                      <textarea value={formData.medical_history}
-                        onChange={(e) => setFormData({...formData, medical_history: e.target.value})}
-                        rows="3" placeholder="Previous conditions, surgeries, chronic illnesses..."
-                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Emergency Contact */}
+                {/* 5. Emergency Contact */}
                 <div>
                   <h3 className="text-lg font-semibold text-slate-900 mb-4">Emergency Contact</h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -679,33 +899,53 @@ const Patients = () => {
               </div>
 
               {/* Tab Bar */}
-              <div className="flex gap-1 mb-6 border-b border-slate-200">
-                {[
-                  { key: 'timeline', label: 'Timeline', count: appointments.length + consultations.length + orders.length + payments.length + admissions.length, icon: Clock },
-                  { key: 'appointments', label: 'Appointments', count: appointments.length, icon: Calendar },
-                  { key: 'consultations', label: 'Consultations', count: consultations.length, icon: Activity },
-                  { key: 'orders', label: 'Orders', count: orders.length, icon: ClipboardList },
-                  { key: 'payments', label: 'Payments', count: payments.length, icon: DollarSign },
-                  { key: 'admissions', label: 'Admissions', count: admissions.length, icon: Bed },
-                ].map(({ key, label, count, icon: Icon }) => (
-                  <button
-                    key={key}
-                    onClick={() => setActiveHistoryTab(key)}
-                    className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors ${
-                      activeHistoryTab === key
-                        ? 'border-teal-500 text-teal-600'
-                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    <Icon size={16} />
-                    {label}
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      activeHistoryTab === key ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {count}
-                    </span>
-                  </button>
-                ))}
+              <div className="flex items-center gap-1 mb-6 border-b border-slate-200">
+                <button
+                  onClick={() => tabScrollRef.current?.scrollBy({ left: -160, behavior: 'smooth' })}
+                  className="flex-shrink-0 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div ref={tabScrollRef} className="flex gap-1 overflow-x-auto scrollbar-hide flex-1">
+                  {[
+                    { key: 'timeline', label: 'Timeline', count: appointments.length + consultations.length + orders.length + payments.length + admissions.length, icon: Clock },
+                    { key: 'appointments', label: 'Appointments', count: appointments.length, icon: Calendar },
+                    { key: 'consultations', label: 'Consultations', count: consultations.length, icon: Activity },
+                    { key: 'orders', label: 'Orders', count: orders.length, icon: ClipboardList },
+                    { key: 'payments', label: 'Payments', count: payments.length, icon: DollarSign },
+                    { key: 'admissions', label: 'Admissions', count: admissions.length, icon: Bed },
+                    { key: 'vitals', label: 'Vital Signs', count: patientVitals.length, icon: Activity },
+                  ].map(({ key, label, count, icon: Icon }) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setActiveHistoryTab(key)
+                        if (key === 'vitals' && viewingPatient) {
+                          handleVitalsTabActivate(viewingPatient)
+                        }
+                      }}
+                      className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
+                        activeHistoryTab === key
+                          ? 'border-teal-500 text-teal-600'
+                          : 'border-transparent text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      <Icon size={16} />
+                      {label}
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                        activeHistoryTab === key ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: 'smooth' })}
+                  className="flex-shrink-0 p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded transition-colors"
+                >
+                  <ChevronRight size={18} />
+                </button>
               </div>
 
               {/* Tab Content */}
@@ -720,6 +960,7 @@ const Patients = () => {
                     <MedicalHistoryTimeline 
                       patientId={viewingPatient.id} 
                       className="bg-slate-50 rounded-xl p-6"
+                      preloadedData={{ consultations, appointments, orders, payments, admissions }}
                     />
                   )}
 
@@ -762,10 +1003,61 @@ const Patients = () => {
                   {/* Consultations Tab */}
                   {activeHistoryTab === 'consultations' && (
                     <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="flex justify-end mb-4">
+                        <button
+                          onClick={() => handleOpenConsultationForm()}
+                          className="flex items-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+                        >
+                          <Plus size={16} /> Add Consultation
+                        </button>
+                      </div>
                       {consultations.length === 0 ? (
                         <p className="text-center text-sm text-slate-500 py-8">No consultations recorded yet</p>
                       ) : (
                         <div className="space-y-3">
+                          {/* Vital Signs Trend */}
+                          {(() => {
+                            const vitalsData = consultations
+                              .filter(c => c.vital_signs?.blood_pressure || c.vital_signs?.weight || c.vital_signs?.temperature)
+                              .slice(0, 6)
+                              .reverse()
+                            return (
+                              <div className="bg-white rounded-lg border border-slate-200 p-4 mb-4">
+                                <h4 className="text-sm font-semibold text-slate-700 mb-3">Vital Signs Trend</h4>
+                                {vitalsData.length === 0 ? (
+                                  <p className="text-xs text-slate-400 py-1">No vital signs recorded in consultations yet</p>
+                                ) : (
+                                  <>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full text-xs">
+                                        <thead>
+                                          <tr className="text-slate-500 border-b border-slate-100">
+                                            <th className="text-left py-1 pr-3 font-medium">Date</th>
+                                            <th className="text-left py-1 pr-3 font-medium">BP</th>
+                                            <th className="text-left py-1 pr-3 font-medium">Temp (°C)</th>
+                                            <th className="text-left py-1 pr-3 font-medium">Weight (kg)</th>
+                                            <th className="text-left py-1 font-medium">Pulse</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {vitalsData.map((c, i) => (
+                                            <tr key={c.id} className={`border-b border-slate-50 ${i === vitalsData.length - 1 ? 'font-semibold text-teal-700' : 'text-slate-600'}`}>
+                                              <td className="py-1.5 pr-3">{new Date(c.consultation_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.blood_pressure || '—'}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.temperature || '—'}</td>
+                                              <td className="py-1.5 pr-3">{c.vital_signs?.weight || '—'}</td>
+                                              <td className="py-1.5">{c.vital_signs?.pulse_rate || c.vital_signs?.heart_rate || '—'}</td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                    <p className="text-xs text-teal-600 mt-2 font-medium">↑ Most recent visit highlighted</p>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
                           {consultations.map((consultation) => (
                             <div key={consultation.id} className="p-4 bg-white rounded-lg border border-slate-200">
                               <div className="flex items-start justify-between mb-3">
@@ -775,11 +1067,20 @@ const Patients = () => {
                                     Dr. {consultation.doctor?.first_name} {consultation.doctor?.last_name}
                                   </p>
                                 </div>
-                                <span className="text-xs text-slate-500">
-                                  {new Date(consultation.consultation_date).toLocaleDateString('en-US', {
-                                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                  })}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-slate-500">
+                                    {new Date(consultation.consultation_date).toLocaleDateString('en-US', {
+                                      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                    })}
+                                  </span>
+                                  <button
+                                    onClick={() => handleOpenConsultationForm(consultation)}
+                                    className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                    title="Edit"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                </div>
                               </div>
                               <div className="space-y-2 text-sm">
                                 {consultation.chief_complaint && (
@@ -1021,9 +1322,239 @@ const Patients = () => {
                       )}
                     </div>
                   )}
+
+                  {/* Vital Signs Tab */}
+                  {activeHistoryTab === 'vitals' && (
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Vital Signs History</h4>
+                        <button
+                          onClick={handleAddVitals}
+                          className="flex items-center gap-1 px-3 py-2 bg-teal-600 text-white rounded-lg text-sm font-semibold hover:bg-teal-700 transition-colors"
+                        >
+                          <Plus size={14} /> Add Vitals
+                        </button>
+                      </div>
+                      {vitalsLoading ? (
+                        <div className="py-8 flex items-center justify-center gap-2 text-slate-500 text-sm">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-teal-500 border-t-transparent"></div>
+                          Loading vitals…
+                        </div>
+                      ) : patientVitals.length === 0 ? (
+                        <div className="text-center py-8">
+                          <Activity size={48} className="mx-auto text-slate-300 mb-2" />
+                          <p className="text-slate-500">No vitals recorded yet</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="text-xs text-slate-500 border-b border-slate-200">
+                                <th className="text-left py-2 pr-3 font-semibold">Date/Time</th>
+                                <th className="text-left py-2 pr-3 font-semibold">BP</th>
+                                <th className="text-left py-2 pr-3 font-semibold">HR</th>
+                                <th className="text-left py-2 pr-3 font-semibold">Temp</th>
+                                <th className="text-left py-2 pr-3 font-semibold">RR</th>
+                                <th className="text-left py-2 pr-3 font-semibold">O₂ Sat</th>
+                                <th className="text-left py-2 pr-3 font-semibold">Weight</th>
+                                <th className="text-left py-2 pr-3 font-semibold">Notes</th>
+                                <th className="text-left py-2 pr-3 font-semibold">Recorded By</th>
+                                <th className="text-left py-2 font-semibold">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {patientVitals.map((v) => (
+                                <tr key={v.id} className="border-b border-slate-100 hover:bg-white transition-colors">
+                                  <td className="py-2 pr-3 text-xs text-slate-600 whitespace-nowrap">
+                                    {new Date(v.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}<br />
+                                    <span className="text-slate-400">{new Date(v.recorded_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  </td>
+                                  <td className="py-2 pr-3">
+                                    {v.blood_pressure_systolic && v.blood_pressure_diastolic
+                                      ? <><VitalSignsBadge field="blood_pressure_systolic" value={v.blood_pressure_systolic} /><span className="text-slate-400">/</span><VitalSignsBadge field="blood_pressure_diastolic" value={v.blood_pressure_diastolic} /></>
+                                      : <span className="text-slate-400">—</span>}
+                                  </td>
+                                  <td className="py-2 pr-3"><VitalSignsBadge field="heart_rate" value={v.heart_rate} unit="bpm" /></td>
+                                  <td className="py-2 pr-3"><VitalSignsBadge field="temperature" value={v.temperature} unit="°C" /></td>
+                                  <td className="py-2 pr-3"><VitalSignsBadge field="respiratory_rate" value={v.respiratory_rate} unit="/min" /></td>
+                                  <td className="py-2 pr-3"><VitalSignsBadge field="oxygen_saturation" value={v.oxygen_saturation} unit="%" /></td>
+                                  <td className="py-2 pr-3"><VitalSignsBadge field="weight" value={v.weight} unit="kg" /></td>
+                                  <td className="py-2 pr-3 text-xs text-slate-600 max-w-[120px] truncate">{v.notes || '—'}</td>
+                                  <td className="py-2 pr-3 text-xs text-slate-600">{v.recorded_by ? v.recorded_by.slice(0, 8) + '…' : '—'}</td>
+                                  <td className="py-2">
+                                    <div className="flex items-center gap-1">
+                                      <button
+                                        onClick={() => handleEditVitals(v)}
+                                        className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                        title="Edit"
+                                      >
+                                        <Edit2 size={14} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteVitals(v.id)}
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                        title="Delete"
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vitals Form Modal */}
+      {showVitalsForm && viewingPatient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">{editingVitals ? 'Edit Vital Signs' : 'Add Vital Signs'}</h2>
+                <p className="text-sm text-slate-600 mt-1">{viewingPatient.first_name} {viewingPatient.last_name}</p>
+              </div>
+              <button onClick={() => setShowVitalsForm(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-6">
+              <VitalSignsForm
+                patientId={viewingPatient.id}
+                appointmentId={editingVitals?.appointment_id || null}
+                patientAppointments={patientAppointmentsForVitals}
+                initialValues={editingVitals || {}}
+                mode="patients"
+                onSuccess={async () => {
+                  setShowVitalsForm(false)
+                  setEditingVitals(null)
+                  await loadPatientVitals(viewingPatient.id)
+                }}
+                onCancel={() => {
+                  setShowVitalsForm(false)
+                  setEditingVitals(null)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Consultation Form Modal */}
+      {showConsultationForm && viewingPatient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">{editingConsultation ? 'Edit Consultation' : 'Add Consultation'}</h2>
+                <p className="text-sm text-slate-600 mt-1">{viewingPatient.first_name} {viewingPatient.last_name}</p>
+              </div>
+              <button onClick={() => setShowConsultationForm(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveConsultation} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Date &amp; Time <span className="text-red-500">*</span></label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={consultationFormData.consultation_date}
+                    onChange={e => setConsultationFormData(p => ({ ...p, consultation_date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Doctor</label>
+                  <select
+                    value={consultationFormData.doctor_id}
+                    onChange={e => setConsultationFormData(p => ({ ...p, doctor_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">— Select doctor —</option>
+                    {doctors.map(d => (
+                      <option key={d.id} value={d.id}>Dr. {d.first_name} {d.last_name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">S — Chief Complaint / Subjective</label>
+                <textarea
+                  rows={2}
+                  value={consultationFormData.chief_complaint}
+                  onChange={e => setConsultationFormData(p => ({ ...p, chief_complaint: e.target.value }))}
+                  placeholder="Patient's chief complaint and history..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">O — Objective / Examination Findings</label>
+                <textarea
+                  rows={2}
+                  value={consultationFormData.objective}
+                  onChange={e => setConsultationFormData(p => ({ ...p, objective: e.target.value }))}
+                  placeholder="Physical examination findings, vitals..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">A — Assessment / Diagnosis</label>
+                <textarea
+                  rows={2}
+                  value={consultationFormData.diagnosis}
+                  onChange={e => setConsultationFormData(p => ({ ...p, diagnosis: e.target.value }))}
+                  placeholder="Diagnosis or clinical impression..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">P — Plan / Treatment</label>
+                <textarea
+                  rows={2}
+                  value={consultationFormData.prescription}
+                  onChange={e => setConsultationFormData(p => ({ ...p, prescription: e.target.value }))}
+                  placeholder="Treatment plan, medications, follow-up..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">Additional Notes</label>
+                <textarea
+                  rows={2}
+                  value={consultationFormData.notes}
+                  onChange={e => setConsultationFormData(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Any additional notes..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowConsultationForm(false)}
+                  className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingConsultation}
+                  className="px-4 py-2 text-sm font-semibold text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {savingConsultation ? 'Saving…' : (editingConsultation ? 'Update' : 'Save Consultation')}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

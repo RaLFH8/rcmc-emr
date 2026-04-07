@@ -1,0 +1,49 @@
+{
+  "id": "naresuan",
+  "name": "King Naresuan",
+  "faction": "thailand",
+  "dlc_tier": 0,
+  "price_usd": 0.0,
+  "historical_period": "1555-1605",
+  "lore": "The warrior king who freed Siam from Burmese domination. Famous for his elephant duel against the Burmese crown prince, Naresuan is the symbol of Thai independence and martial valor.",
+  "hp": 350,
+  "attack": 45,
+  "attack_range": 110,
+  "attack_speed": 1.6,
+  "move_speed": 90,
+  "armor_type": "hero",
+  "damage_type": "cannon",
+  "vision_range": 230,
+  "supply_cost": 0,
+  "abilities": [
+    {
+      "id": "elephant_charge",
+      "name": "Elephant Charge",
+      "type": "passive",
+      "description": "Naresuan's attacks knock back infantry units 50 tiles. Armored units are slowed 30% instead.",
+      "knockback_distance": 50,
+      "slow_vs_armor": 0.30
+    },
+    {
+      "id": "royal_challenge",
+      "name": "Royal Challenge",
+      "type": "active",
+      "description": "Challenges the nearest enemy hero to single combat. Both heroes are locked in place for 8 seconds, dealing 2x damage to each other. Naresuan wins if he has more HP remaining.",
+      "cooldown": 30.0,
+      "lock_duration": 8.0,
+      "damage_multiplier": 2.0,
+      "manpower_cost": 35
+    },
+    {
+      "id": "siamese_liberation",
+      "name": "Siamese Liberation",
+      "type": "ultimate",
+      "description": "Naresuan charges through all enemies in a straight line, dealing 200 damage to each and reducing their armor by 40% for 15 seconds.",
+      "cooldown": 60.0,
+      "charge_damage": 200,
+      "armor_reduction": 0.40,
+      "armor_reduction_duration": 15.0,
+      "manpower_cost": 60
+    }
+  ]
+}

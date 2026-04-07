@@ -1,0 +1,19 @@
+{
+  "id": "indonesia",
+  "name": "Indonesia",
+  "full_name": "Republic of Indonesia",
+  "color": "#FF4500",
+  "flag_color_primary": "#FF0000",
+  "flag_color_secondary": "#FFFFFF",
+  "passive_name": "Nusantara Resilience",
+  "passive_description": "+10% HP for all units",
+  "passive_type": "unit_hp_multiplier",
+  "passive_value": 1.10,
+  "starting_credits": 500,
+  "starting_fuel": 200,
+  "starting_manpower": 100,
+  "free_hero": "diponegoro",
+  "dlc_heroes": ["sudirman", "pattimura"],
+  "lore": "The vast archipelago of Indonesia breeds warriors of extraordinary endurance. Spanning 17,000 islands, Indonesian forces are hardened by diverse terrain and carry the spirit of the independence struggle.",
+  "unit_voice_language": "indonesian"
+}

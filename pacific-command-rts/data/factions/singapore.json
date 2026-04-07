@@ -1,0 +1,19 @@
+{
+  "id": "singapore",
+  "name": "Singapore",
+  "full_name": "Republic of Singapore",
+  "color": "#FF69B4",
+  "flag_color_primary": "#EF3340",
+  "flag_color_secondary": "#FFFFFF",
+  "passive_name": "Lion City Fortification",
+  "passive_description": "+25% Defense Tower range",
+  "passive_type": "defense_tower_range_multiplier",
+  "passive_value": 1.25,
+  "starting_credits": 500,
+  "starting_fuel": 200,
+  "starting_manpower": 100,
+  "free_hero": "sang_nila_utama",
+  "dlc_heroes": ["farquhar", "raffles"],
+  "lore": "A city-state that transformed from a fishing village to a military powerhouse in decades. Singapore's defense doctrine is built on technological superiority and impenetrable fortifications that project force far beyond their borders.",
+  "unit_voice_language": "english"
+}

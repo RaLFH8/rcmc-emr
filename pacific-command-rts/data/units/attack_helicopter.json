@@ -1,0 +1,23 @@
+{
+	"id": "attack_helicopter",
+	"name": "Attack Helicopter",
+	"cost": { "credits": 400, "fuel": 150, "manpower": 0 },
+	"supply": 10,
+	"hp": 300,
+	"attack": 70,
+	"attack_range": 250,
+	"attack_speed": 1.2,
+	"move_speed": 160,
+	"armor_type": "air",
+	"damage_type": "rockets",
+	"vision_range": 350,
+	"train_time": 22.0,
+	"train_from": "airfield",
+	"terrain_modifiers": {
+		"jungle": 1.0,
+		"road": 1.0,
+		"open": 1.0,
+		"water": 1.0,
+		"beach": 1.0
+	}
+}

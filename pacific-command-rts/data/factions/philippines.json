@@ -1,0 +1,18 @@
+{
+	"id": "philippines",
+	"name": "Philippines",
+	"passive_bonus": {
+		"type": "manpower_regen",
+		"value": 0.20
+	},
+	"color": "0000FF",
+	"free_units": ["rifleman", "anti_tank", "light_tank", "attack_helicopter"],
+	"exclusive_units": [],
+	"free_hero": "lapu_lapu",
+	"faction_upgrade": {
+		"id": "bayanihan_spirit",
+		"name": "Bayanihan Spirit",
+		"description": "Nearby allies +10% attack speed when hero present",
+		"cost": { "credits": 300 }
+	}
+}

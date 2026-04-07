@@ -1,0 +1,24 @@
+{
+  "id": "skirmish_coastal_clash",
+  "name": "Coastal Clash",
+  "description": "Two peninsulas separated by a bay. Naval chokepoint in the center. High ground on both flanks.",
+  "size": { "width": 45, "height": 45 },
+  "tile_size": 64,
+  "player_spawns": [
+    { "player": 0, "x": 8, "y": 8 },
+    { "player": 1, "x": 37, "y": 37 }
+  ],
+  "capture_points": [
+    { "x": 22, "y": 15, "credits_per_tick": 18 },
+    { "x": 22, "y": 30, "credits_per_tick": 18 },
+    { "x": 22, "y": 22, "credits_per_tick": 25 }
+  ],
+  "terrain_notes": "Water in center bay. Beach chokepoints. High ground on northwest and southeast corners.",
+  "asymmetric_advantage": {
+    "player_0": "high_ground_northwest",
+    "player_1": "high_ground_southeast"
+  },
+  "loading_tip": "Coastal terrain has shaped Southeast Asian warfare for millennia. Control of straits and bays determined the fate of empires from Srivijaya to the modern era.",
+  "music_track": "skirmish_coastal",
+  "ambient": "ocean_waves"
+}

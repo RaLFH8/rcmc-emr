@@ -192,10 +192,26 @@ export const db = {
   },
 
   async generatePatientNumber() {
-    const { count } = await supabase
+    // Use MAX instead of COUNT to avoid race conditions with concurrent registrations
+    const { data, error } = await supabase
       .from('patients')
-      .select('*', { count: 'exact', head: true })
-    return `P${String((count || 0) + 1).padStart(6, '0')}`
+      .select('patient_number')
+      .order('patient_number', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows found (first patient)
+      throw error
+    }
+
+    if (!data) {
+      return 'P000001'
+    }
+
+    // Extract numeric part and increment
+    const lastNum = parseInt(data.patient_number?.replace('P', '') || '0', 10)
+    return `P${String(lastNum + 1).padStart(6, '0')}`
   },
 
   // ==================== DOCTORS ====================
@@ -287,7 +303,7 @@ export const db = {
   },
 
   // ==================== CONSULTATIONS ====================
-  async getConsultations(patientId = null) {
+  async getConsultations(patientId = null, limit = 50, offset = 0) {
     let query = supabase
       .from('consultations')
       .select(`
@@ -299,6 +315,9 @@ export const db = {
 
     if (patientId) {
       query = query.eq('patient_id', patientId)
+    } else {
+      // When fetching all consultations (no patient filter), apply pagination
+      query = query.range(offset, offset + limit - 1)
     }
 
     const { data, error } = await query
@@ -2135,5 +2154,80 @@ export const db = {
       .subscribe()
 
     return subscription
-  }
+  },
+
+  // ==================== VITAL SIGNS ====================
+
+  async getVitalsByPatient(patientId) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('recorded_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  },
+
+  async getVitalsByAppointment(appointmentId) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .eq('appointment_id', appointmentId)
+      .maybeSingle()
+    if (error) throw error
+    return data || null
+  },
+
+  async getVitalsByAppointmentIds(ids) {
+    if (!ids || ids.length === 0) return new Map()
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .in('appointment_id', ids)
+    if (error) throw error
+    const map = new Map()
+    ;(data || []).forEach(v => map.set(v.appointment_id, v))
+    return map
+  },
+
+  async upsertVitals(record) {
+    // If appointment_id is present, upsert (update existing for that appointment)
+    // If no appointment_id (patient-tab entry), plain insert
+    if (record.appointment_id) {
+      const { data, error } = await supabase
+        .from('vital_signs')
+        .upsert(record, { onConflict: 'appointment_id' })
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    } else {
+      const { data, error } = await supabase
+        .from('vital_signs')
+        .insert(record)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    }
+  },
+
+  async updateVitals(id, updates) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async deleteVitals(id) {
+    const { error } = await supabase
+      .from('vital_signs')
+      .delete()
+      .eq('id', id)
+    if (error) throw error
+  },
 }

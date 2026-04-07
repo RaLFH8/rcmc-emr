@@ -1,0 +1,52 @@
+{
+  "id": "andres_bonifacio",
+  "name": "Andres Bonifacio",
+  "faction": "philippines",
+  "dlc_tier": 2,
+  "price_usd": 0.99,
+  "historical_period": "1863-1897",
+  "lore": "Father of the Philippine Revolution and founder of the Katipunan. A man of the people who rose from poverty to lead a nation's fight for freedom. His rallying cry united millions against colonial rule.",
+  "hp": 320,
+  "attack": 42,
+  "attack_range": 120,
+  "attack_speed": 1.5,
+  "move_speed": 105,
+  "armor_type": "hero",
+  "damage_type": "small_arms",
+  "vision_range": 240,
+  "supply_cost": 0,
+  "abilities": [
+    {
+      "id": "peoples_spirit",
+      "name": "People's Spirit",
+      "type": "passive",
+      "description": "When any allied unit dies near Bonifacio (within 200 tiles), he gains +5% attack and +5% move speed, stacking up to 10 times.",
+      "radius": 200,
+      "max_stacks": 10,
+      "attack_bonus_per_stack": 0.05,
+      "speed_bonus_per_stack": 0.05
+    },
+    {
+      "id": "katipunan_rally",
+      "name": "Katipunan Rally",
+      "type": "active",
+      "description": "Instantly spawns 4 Rifleman units at Bonifacio's position. These units last 30 seconds.",
+      "cooldown": 35.0,
+      "spawn_count": 4,
+      "spawn_unit": "rifleman",
+      "duration": 30.0,
+      "manpower_cost": 40
+    },
+    {
+      "id": "cry_of_pugad_lawin",
+      "name": "Cry of Pugad Lawin",
+      "type": "ultimate",
+      "description": "Bonifacio lets out a battle cry. All enemies within 250 tiles flee (move away from Bonifacio) for 5 seconds. Allied units in range gain full HP restoration.",
+      "cooldown": 70.0,
+      "radius": 250,
+      "flee_duration": 5.0,
+      "heal_percent": 1.0,
+      "manpower_cost": 70
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "vietnam",
+  "name": "Vietnam",
+  "full_name": "Socialist Republic of Vietnam",
+  "color": "#FF0000",
+  "flag_color_primary": "#FF0000",
+  "flag_color_secondary": "#FFFF00",
+  "passive_name": "War Economy",
+  "passive_description": "+15% Credits from Refineries",
+  "passive_type": "credits_rate_multiplier",
+  "passive_value": 1.15,
+  "starting_credits": 500,
+  "starting_fuel": 200,
+  "starting_manpower": 100,
+  "free_hero": "tran_hung_dao",
+  "dlc_heroes": ["nguyen_hue", "le_loi"],
+  "lore": "Forged through centuries of resistance, Vietnam's forces are masters of guerrilla warfare and economic resilience. Their refineries produce credits at an accelerated rate, funding a relentless war machine.",
+  "unit_voice_language": "vietnamese"
+}

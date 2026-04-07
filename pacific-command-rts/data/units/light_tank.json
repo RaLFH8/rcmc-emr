@@ -1,0 +1,23 @@
+{
+	"id": "light_tank",
+	"name": "Light Tank",
+	"cost": { "credits": 300, "fuel": 50, "manpower": 0 },
+	"supply": 8,
+	"hp": 500,
+	"attack": 60,
+	"attack_range": 160,
+	"attack_speed": 1.5,
+	"move_speed": 100,
+	"armor_type": "light_armor",
+	"damage_type": "cannon",
+	"vision_range": 220,
+	"train_time": 18.0,
+	"train_from": "war_factory",
+	"terrain_modifiers": {
+		"jungle": 0.4,
+		"road": 1.4,
+		"open": 1.0,
+		"water": 0.0,
+		"beach": 0.7
+	}
+}

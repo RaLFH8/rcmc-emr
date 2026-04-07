@@ -242,10 +242,11 @@ const Dashboard = ({ setCurrentPage }) => {
           })
         }
         
-        chartData = Object.entries(dailyData).map(([, info]) => ({
+        chartData = Object.entries(dailyData).map(([dayKey, info]) => ({
           label: info.label,
+          date: new Date(dayKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
           value: info.count,
-          comparison: Math.floor(info.count * 0.8) // Simulated previous period
+          comparison: Math.floor(info.count * 0.8)
         }))
         
       } else if (chartView === 'weekly') {
@@ -290,11 +291,18 @@ const Dashboard = ({ setCurrentPage }) => {
           })
         }
         
-        chartData = Object.entries(weeklyData).map(([, info]) => ({
-          label: info.label,
-          value: info.count,
-          comparison: Math.floor(info.count * 0.8) // Simulated previous period
-        }))
+        chartData = Object.entries(weeklyData).map(([weekKey, info]) => {
+          const weekEnd = new Date(weekKey)
+          weekEnd.setDate(weekEnd.getDate() + 6)
+          const weekStart = new Date(weekKey)
+          const dateRange = `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+          return {
+            label: info.label,
+            date: dateRange,
+            value: info.count,
+            comparison: Math.floor(info.count * 0.8)
+          }
+        })
         
       } else {
         // Monthly view (last 6 months) - existing implementation
@@ -303,8 +311,9 @@ const Dashboard = ({ setCurrentPage }) => {
           const date = new Date(month)
           return {
             label: date.toLocaleDateString('en-US', { month: 'short' }),
+            date: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
             value: count,
-            comparison: Math.floor(count * 0.8) // Simulated previous period
+            comparison: Math.floor(count * 0.8)
           }
         })
       }
@@ -651,11 +660,11 @@ const Dashboard = ({ setCurrentPage }) => {
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between gap-8">
-                            <span className="text-xs text-slate-600">Sept 29, 2024</span>
+                            <span className="text-xs text-slate-600">{payload[0].payload.date || payload[0].payload.label}</span>
                             <span className="text-sm font-bold text-slate-900">{payload[0].value}</span>
                           </div>
                           <div className="flex items-center justify-between gap-8">
-                            <span className="text-xs text-slate-600">Sept 29, 2024</span>
+                            <span className="text-xs text-slate-600">{payload[0].payload.date || payload[0].payload.label}</span>
                             <span className="text-sm font-bold text-slate-900">{payload[0].payload.comparison}</span>
                           </div>
                         </div>

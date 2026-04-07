@@ -1,0 +1,19 @@
+{
+  "id": "thailand",
+  "name": "Thailand",
+  "full_name": "Kingdom of Thailand",
+  "color": "#0000FF",
+  "flag_color_primary": "#003087",
+  "flag_color_secondary": "#FFFFFF",
+  "passive_name": "Land of the Free",
+  "passive_description": "+20% Fuel efficiency (all units consume 20% less Fuel)",
+  "passive_type": "fuel_consumption_multiplier",
+  "passive_value": 0.80,
+  "starting_credits": 500,
+  "starting_fuel": 200,
+  "starting_manpower": 100,
+  "free_hero": "naresuan",
+  "dlc_heroes": ["taksin", "suriyothai"],
+  "lore": "The only Southeast Asian nation never colonized by a European power, Thailand's military tradition is ancient and unbroken. Their forces move with exceptional fuel efficiency, projecting power across vast distances.",
+  "unit_voice_language": "thai"
+}

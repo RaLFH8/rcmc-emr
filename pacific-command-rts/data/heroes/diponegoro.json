@@ -1,0 +1,51 @@
+{
+  "id": "diponegoro",
+  "name": "Prince Diponegoro",
+  "faction": "indonesia",
+  "dlc_tier": 0,
+  "price_usd": 0.0,
+  "historical_period": "1785-1855",
+  "lore": "Led the Java War (1825-1830), the most costly war the Dutch ever fought in the Indies. A prince who gave up his palace to fight for his people, Diponegoro's guerrilla tactics tied down 23,000 Dutch troops.",
+  "hp": 310,
+  "attack": 36,
+  "attack_range": 130,
+  "attack_speed": 1.2,
+  "move_speed": 98,
+  "armor_type": "hero",
+  "damage_type": "small_arms",
+  "vision_range": 250,
+  "supply_cost": 0,
+  "abilities": [
+    {
+      "id": "jungle_sovereign",
+      "name": "Jungle Sovereign",
+      "type": "passive",
+      "description": "Diponegoro and all allied units gain +20% move speed and +10% damage when in jungle terrain.",
+      "terrain": "jungle",
+      "speed_bonus": 0.20,
+      "damage_bonus": 0.10
+    },
+    {
+      "id": "guerrilla_strike",
+      "name": "Guerrilla Strike",
+      "type": "active",
+      "description": "Diponegoro vanishes into jungle for 6 seconds. His next attack deals 3x damage and stuns for 2 seconds.",
+      "cooldown": 18.0,
+      "stealth_duration": 6.0,
+      "damage_multiplier": 3.0,
+      "stun_duration": 2.0,
+      "manpower_cost": 20
+    },
+    {
+      "id": "java_war_cry",
+      "name": "Java War Cry",
+      "type": "ultimate",
+      "description": "Summons 6 guerrilla fighters that emerge from jungle tiles within 200 tiles. Each deals 60 damage on spawn to nearest enemy.",
+      "cooldown": 55.0,
+      "spawn_count": 6,
+      "spawn_damage": 60,
+      "radius": 200,
+      "manpower_cost": 55
+    }
+  ]
+}

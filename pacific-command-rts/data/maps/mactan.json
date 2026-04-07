@@ -1,0 +1,23 @@
+{
+  "id": "mactan",
+  "name": "Mactan Island",
+  "description": "A small island in the Visayas. Beach terrain dominates the coastline, with jungle inland. Lapu-Lapu's home ground.",
+  "size": { "width": 40, "height": 30 },
+  "tile_size": 64,
+  "player_spawns": [
+    { "player": 0, "x": 5, "y": 15 },
+    { "player": 1, "x": 35, "y": 15 }
+  ],
+  "capture_points": [
+    { "x": 20, "y": 10, "credits_per_tick": 15 },
+    { "x": 20, "y": 20, "credits_per_tick": 15 }
+  ],
+  "terrain_notes": "Heavy beach terrain on east/west edges. Jungle in center. No water tiles (island interior).",
+  "asymmetric_advantage": {
+    "player_0": "jungle_cover",
+    "player_1": "coastal_advantage"
+  },
+  "loading_tip": "Lapu-Lapu was the chieftain of Mactan Island. He defeated Ferdinand Magellan on April 27, 1521 — the first Filipino to resist foreign colonization.",
+  "music_track": "battle_mactan",
+  "ambient": "tropical_beach"
+}

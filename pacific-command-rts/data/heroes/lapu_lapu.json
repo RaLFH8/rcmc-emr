@@ -1,0 +1,38 @@
+{
+	"id": "lapu_lapu",
+	"name": "Lapu-Lapu",
+	"faction": "philippines",
+	"is_free": true,
+	"cost": { "credits": 0, "fuel": 0, "manpower": 50 },
+	"hp": 600,
+	"attack": 45,
+	"attack_range": 120,
+	"attack_speed": 0.8,
+	"move_speed": 90,
+	"vision_range": 280,
+	"size_multiplier": 2.0,
+	"abilities": {
+		"passive": {
+			"id": "island_defender",
+			"name": "Island Defender",
+			"description": "-30% damage taken on coastal/beach terrain"
+		},
+		"active": {
+			"id": "mactan_ambush",
+			"name": "Mactan Ambush",
+			"description": "Vanishes 10s, reappears behind enemies, stuns 3s",
+			"cooldown": 30.0,
+			"duration": 10.0,
+			"stun_duration": 3.0
+		},
+		"ultimate": {
+			"id": "datus_challenge",
+			"name": "Datu's Challenge",
+			"description": "Always wins duel if enemy hero within 8 tiles. Enemy units lose 50% attack speed for 30s.",
+			"cooldown": 90.0,
+			"range": 512,
+			"debuff_duration": 30.0,
+			"attack_speed_reduction": 0.5
+		}
+	}
+}

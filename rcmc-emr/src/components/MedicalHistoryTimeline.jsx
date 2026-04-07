@@ -2,35 +2,41 @@ import { useState, useEffect } from 'react'
 import { Calendar, Activity, ClipboardList, FileText, TestTube, DollarSign, Bed, Clock, User } from 'lucide-react'
 import { db } from '../lib/supabase'
 import SkeletonLoader from './SkeletonLoader'
+import VitalSignsBadge from './VitalSignsBadge'
 
-const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
+const MedicalHistoryTimeline = ({ patientId, className = '', preloadedData = null }) => {
   const [timelineEvents, setTimelineEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [vitalsMap, setVitalsMap] = useState(new Map())
 
   useEffect(() => {
-    if (patientId) {
+    if (preloadedData) {
+      // Use pre-loaded data from parent — no extra queries needed
+      buildTimeline(
+        preloadedData.consultations || [],
+        preloadedData.appointments || [],
+        preloadedData.orders || [],
+        preloadedData.payments || [],
+        preloadedData.admissions || []
+      )
+      // Batch-fetch vitals for consultation appointment IDs
+      const aptIds = (preloadedData.consultations || [])
+        .map(c => c.appointment_id)
+        .filter(Boolean)
+      if (aptIds.length > 0) {
+        db.getVitalsByAppointmentIds(aptIds)
+          .then(map => setVitalsMap(map))
+          .catch(err => { console.error('Error fetching vitals for timeline:', err); setVitalsMap(new Map()) })
+      }
+      setLoading(false)
+    } else if (patientId) {
       loadTimelineData()
     }
-  }, [patientId])
+  }, [patientId, preloadedData])
 
-  const loadTimelineData = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Load all medical events in parallel
-      const [consultations, appointments, orders, labResults, payments, admissions] = await Promise.all([
-        db.getConsultations(patientId).catch(() => []),
-        db.getAppointmentsByPatient(patientId).catch(() => []),
-        db.getOrdersByPatient(patientId).catch(() => []),
-        // Lab results would be loaded here if available
-        Promise.resolve([]),
-        db.getBillingByPatient(patientId).catch(() => []),
-        db.getInpatientsByPatient(patientId).catch(() => [])
-      ])
-
-      // Create lookup maps for better SOAP order integration
+  const buildTimeline = (consultations, appointments, orders, payments, admissions) => {
+      // Create lookup maps for SOAP order integration
       const consultationMap = new Map(consultations.map(c => [c.appointment_id, c]))
       const appointmentMap = new Map(appointments.map(a => [a.id, a]))
 
@@ -45,6 +51,7 @@ const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
           date: new Date(consultation.consultation_date),
           title: consultation.chief_complaint || 'Consultation',
           subtitle: `Dr. ${consultation.doctor?.first_name || ''} ${consultation.doctor?.last_name || ''}`.trim(),
+          appointment_id: consultation.appointment_id || null,
           details: {
             diagnosis: consultation.diagnosis,
             prescription: consultation.prescription,
@@ -169,6 +176,35 @@ const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
       events.sort((a, b) => b.date - a.date)
 
       setTimelineEvents(events)
+  }
+
+  const loadTimelineData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const [consultations, appointments, orders, , payments, admissions] = await Promise.all([
+        db.getConsultations(patientId).catch(() => []),
+        db.getAppointmentsByPatient(patientId).catch(() => []),
+        db.getOrdersByPatient(patientId).catch(() => []),
+        Promise.resolve([]),
+        db.getBillingByPatient(patientId).catch(() => []),
+        db.getInpatientsByPatient(patientId).catch(() => [])
+      ])
+
+      buildTimeline(consultations, appointments, orders, payments, admissions)
+
+      // Batch-fetch vitals for consultation appointment IDs
+      const aptIds = consultations.map(c => c.appointment_id).filter(Boolean)
+      if (aptIds.length > 0) {
+        try {
+          const map = await db.getVitalsByAppointmentIds(aptIds)
+          setVitalsMap(map)
+        } catch (err) {
+          console.error('Error fetching vitals for timeline:', err)
+          setVitalsMap(new Map())
+        }
+      }
     } catch (err) {
       console.error('Error loading timeline data:', err)
       setError('Failed to load medical history timeline')
@@ -210,6 +246,27 @@ const MedicalHistoryTimeline = ({ patientId, className = '' }) => {
                 <p className="text-slate-600 ml-2 whitespace-pre-wrap">{event.details.notes}</p>
               </div>
             )}
+            {/* Vitals subsection */}
+            <div className="mt-2 pt-2 border-t border-slate-100">
+              {event.appointment_id && vitalsMap.get(event.appointment_id) ? (() => {
+                const v = vitalsMap.get(event.appointment_id)
+                return (
+                  <div>
+                    <span className="font-semibold text-slate-700 text-xs uppercase tracking-wide">Vitals</span>
+                    <div className="grid grid-cols-3 gap-2 mt-1">
+                      <div className="text-xs"><span className="text-slate-400">BP: </span><VitalSignsBadge field="blood_pressure_systolic" value={v.blood_pressure_systolic} /><span className="text-slate-400">/</span><VitalSignsBadge field="blood_pressure_diastolic" value={v.blood_pressure_diastolic} unit="mmHg" /></div>
+                      <div className="text-xs"><span className="text-slate-400">HR: </span><VitalSignsBadge field="heart_rate" value={v.heart_rate} unit="bpm" /></div>
+                      <div className="text-xs"><span className="text-slate-400">Temp: </span><VitalSignsBadge field="temperature" value={v.temperature} unit="°C" /></div>
+                      <div className="text-xs"><span className="text-slate-400">RR: </span><VitalSignsBadge field="respiratory_rate" value={v.respiratory_rate} unit="/min" /></div>
+                      <div className="text-xs"><span className="text-slate-400">O₂: </span><VitalSignsBadge field="oxygen_saturation" value={v.oxygen_saturation} unit="%" /></div>
+                      <div className="text-xs"><span className="text-slate-400">Wt: </span><VitalSignsBadge field="weight" value={v.weight} unit="kg" /></div>
+                    </div>
+                  </div>
+                )
+              })() : (
+                <p className="text-xs text-slate-400">No vitals recorded</p>
+              )}
+            </div>
           </div>
         )
 

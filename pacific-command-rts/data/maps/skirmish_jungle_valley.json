@@ -1,0 +1,24 @@
+{
+  "id": "skirmish_jungle_valley",
+  "name": "Jungle Valley",
+  "description": "A dense jungle valley with a river running through the center. Asymmetric starting positions — one player gets jungle cover, the other gets road access.",
+  "size": { "width": 50, "height": 40 },
+  "tile_size": 64,
+  "player_spawns": [
+    { "player": 0, "x": 5, "y": 20 },
+    { "player": 1, "x": 45, "y": 20 }
+  ],
+  "capture_points": [
+    { "x": 15, "y": 10, "credits_per_tick": 12 },
+    { "x": 25, "y": 20, "credits_per_tick": 20 },
+    { "x": 35, "y": 30, "credits_per_tick": 12 }
+  ],
+  "terrain_notes": "Player 0 side: heavy jungle. Player 1 side: road network. River in center requires beach crossing.",
+  "asymmetric_advantage": {
+    "player_0": "jungle_cover",
+    "player_1": "road_network"
+  },
+  "loading_tip": "The jungles of Southeast Asia have been decisive battlegrounds throughout history. Guerrilla fighters have used dense vegetation to defeat technologically superior enemies for centuries.",
+  "music_track": "skirmish_jungle",
+  "ambient": "jungle_birds"
+}

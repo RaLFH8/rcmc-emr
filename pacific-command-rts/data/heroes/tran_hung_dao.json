@@ -1,0 +1,51 @@
+{
+  "id": "tran_hung_dao",
+  "name": "Tran Hung Dao",
+  "faction": "vietnam",
+  "dlc_tier": 0,
+  "price_usd": 0.0,
+  "historical_period": "1228-1300",
+  "lore": "Vietnam's greatest military hero, who defeated the Mongol Empire three times. His 'Proclamation to Officers' remains a masterpiece of military literature. He is revered as a national saint.",
+  "hp": 300,
+  "attack": 40,
+  "attack_range": 140,
+  "attack_speed": 1.4,
+  "move_speed": 100,
+  "armor_type": "hero",
+  "damage_type": "small_arms",
+  "vision_range": 260,
+  "supply_cost": 0,
+  "abilities": [
+    {
+      "id": "mongol_bane",
+      "name": "Mongol Bane",
+      "type": "passive",
+      "description": "Tran Hung Dao deals +30% damage to units with higher HP than himself.",
+      "damage_bonus_vs_stronger": 0.30
+    },
+    {
+      "id": "river_ambush",
+      "name": "River Ambush",
+      "type": "active",
+      "description": "Plants 3 hidden stake traps in a line. Enemy units that walk over them take 80 damage and are slowed 50% for 4 seconds.",
+      "cooldown": 20.0,
+      "trap_count": 3,
+      "trap_damage": 80,
+      "slow_percent": 0.50,
+      "slow_duration": 4.0,
+      "manpower_cost": 25
+    },
+    {
+      "id": "bach_dang_tide",
+      "name": "Bach Dang Tide",
+      "type": "ultimate",
+      "description": "Calls a tidal surge on all water/coastal tiles in a 300-tile radius. Enemy units on those tiles take 150 damage and are stunned for 3 seconds.",
+      "cooldown": 65.0,
+      "radius": 300,
+      "damage": 150,
+      "stun_duration": 3.0,
+      "terrain_types": ["water", "beach"],
+      "manpower_cost": 65
+    }
+  ]
+}
