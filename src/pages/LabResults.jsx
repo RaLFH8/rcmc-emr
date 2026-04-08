@@ -24,6 +24,8 @@ const LabResults = () => {
     notes: '',
     file: null
   })
+  const [patientSearch, setPatientSearch] = useState('')
+  const [showPatientDropdown, setShowPatientDropdown] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -176,6 +178,8 @@ const LabResults = () => {
       notes: '',
       file: null
     })
+    setPatientSearch('')
+    setShowPatientDropdown(false)
   }
 
   const filteredResults = labResults.filter(result => {
@@ -339,20 +343,60 @@ const LabResults = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">
                   Patient *
                 </label>
-                <select
-                  value={uploadForm.patient_id}
-                  onChange={(e) => setUploadForm({ ...uploadForm, patient_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                  required
-                  disabled={uploading}
-                >
-                  <option value="">Select Patient</option>
-                  {patients.map(patient => (
-                    <option key={patient.id} value={patient.id}>
-                      {patient.first_name} {patient.last_name} ({patient.patient_number})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={patientSearch}
+                    onChange={e => {
+                      setPatientSearch(e.target.value)
+                      setUploadForm({ ...uploadForm, patient_id: '' })
+                      setShowPatientDropdown(true)
+                    }}
+                    onFocus={() => setShowPatientDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowPatientDropdown(false), 150)}
+                    placeholder="Search patient by name or number..."
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                    disabled={uploading}
+                    autoComplete="off"
+                  />
+                  {/* Hidden required input to enforce selection */}
+                  <input type="text" required value={uploadForm.patient_id} onChange={() => {}} className="sr-only" tabIndex={-1} />
+                  {showPatientDropdown && patientSearch.trim() !== '' && (
+                    <ul className="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {patients
+                        .filter(p => {
+                          const q = patientSearch.toLowerCase()
+                          return (
+                            p.first_name?.toLowerCase().includes(q) ||
+                            p.last_name?.toLowerCase().includes(q) ||
+                            `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) ||
+                            p.patient_number?.toLowerCase().includes(q)
+                          )
+                        })
+                        .slice(0, 10)
+                        .map(p => (
+                          <li
+                            key={p.id}
+                            onMouseDown={() => {
+                              setUploadForm({ ...uploadForm, patient_id: p.id })
+                              setPatientSearch(`${p.first_name} ${p.last_name} (${p.patient_number})`)
+                              setShowPatientDropdown(false)
+                            }}
+                            className="px-4 py-2 text-sm text-slate-700 hover:bg-teal-50 cursor-pointer"
+                          >
+                            {p.first_name} {p.last_name} <span className="text-slate-400 text-xs">#{p.patient_number}</span>
+                          </li>
+                        ))
+                      }
+                      {patients.filter(p => {
+                        const q = patientSearch.toLowerCase()
+                        return p.first_name?.toLowerCase().includes(q) || p.last_name?.toLowerCase().includes(q) || `${p.first_name} ${p.last_name}`.toLowerCase().includes(q) || p.patient_number?.toLowerCase().includes(q)
+                      }).length === 0 && (
+                        <li className="px-4 py-2 text-sm text-slate-400">No patients found</li>
+                      )}
+                    </ul>
+                  )}
+                </div>
               </div>
 
               <div>

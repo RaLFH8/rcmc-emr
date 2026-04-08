@@ -6,6 +6,7 @@ import { useBillingQueue } from '../context/BillingQueueContext'
 import { BillingQueue } from '../components/BillingQueue'
 import jsPDF from 'jspdf'
 import SkeletonLoader from '../components/SkeletonLoader'
+import PatientProfileModal from '../components/PatientProfileModal'
 
 const PAGE_SIZE = 20
 
@@ -39,6 +40,7 @@ const Payments = () => {
   const [totalCount, setTotalCount] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
   const [patients, setPatients] = useState([])
+  const [profilePatient, setProfilePatient] = useState(null)
   const [services, setServices] = useState([])
   const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -760,7 +762,15 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
                   <tr key={payment.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="py-4 px-6"><span className="font-mono text-sm font-semibold text-slate-900">{payment.receipt_number}</span></td>
                     <td className="py-4 px-6">
-                      <p className="font-semibold text-slate-900">{payment.patient_name}</p>
+                      <button
+                        onClick={() => {
+                          const p = patients.find(pt => pt.id === payment.patient_id)
+                          if (p) setProfilePatient(p)
+                        }}
+                        className="font-semibold text-slate-900 hover:text-teal-600 hover:underline text-left transition-colors block"
+                      >
+                        {payment.patient_name}
+                      </button>
                       <p className="text-xs text-slate-500">{payment.patient_number}</p>
                     </td>
                     <td className="py-4 px-6">
@@ -1337,6 +1347,13 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
             </div>
           </div>
         </div>
+      )}
+
+      {profilePatient && (
+        <PatientProfileModal
+          patient={profilePatient}
+          onClose={() => setProfilePatient(null)}
+        />
       )}
     </div>
   )

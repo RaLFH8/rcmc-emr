@@ -5,6 +5,7 @@ import StatCard from '../components/StatCard'
 import { db, supabase } from '../lib/supabase'
 import SkeletonLoader from '../components/SkeletonLoader'
 import { useAuth } from '../context/AuthContext'
+import PatientProfileModal from '../components/PatientProfileModal'
 
 const Dashboard = ({ setCurrentPage }) => {
   const { userProfile } = useAuth()
@@ -21,7 +22,7 @@ const Dashboard = ({ setCurrentPage }) => {
   })
   const [loading, setLoading] = useState(true)
   const [patients, setPatients] = useState([])
-
+  const [profilePatient, setProfilePatient] = useState(null)
   const [selectedDate, setSelectedDate] = useState(new Date()) // Changed to Date object
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [chartView, setChartView] = useState('monthly') // daily, weekly, monthly
@@ -897,7 +898,14 @@ const Dashboard = ({ setCurrentPage }) => {
                 patients.map((patient, index) => (
                   <tr key={patient.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
                     <td className="py-4 px-6 text-sm text-slate-900">{index + 1}</td>
-                    <td className="py-4 px-6 text-sm text-slate-900 font-medium">{patient.first_name} {patient.last_name}</td>
+                    <td className="py-4 px-6 text-sm text-slate-900 font-medium">
+                      <button
+                        onClick={() => setProfilePatient(patient)}
+                        className="hover:text-teal-600 hover:underline text-left transition-colors"
+                      >
+                        {patient.first_name} {patient.last_name}
+                      </button>
+                    </td>
                     <td className="py-4 px-6 text-sm text-slate-600">{patient.gender}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">{new Date(patient.date_of_birth).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     <td className="py-4 px-6 text-sm text-slate-600">
@@ -914,6 +922,13 @@ const Dashboard = ({ setCurrentPage }) => {
           </table>
         </div>
       </div>
+
+      {profilePatient && (
+        <PatientProfileModal
+          patient={profilePatient}
+          onClose={() => setProfilePatient(null)}
+        />
+      )}
     </div>
   )
 }

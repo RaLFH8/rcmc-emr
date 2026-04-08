@@ -3,6 +3,7 @@ import { Plus, Search, User, Bed, Calendar, Clock, X, Activity } from 'lucide-re
 import { db } from '../lib/supabase'
 import SkeletonLoader from '../components/SkeletonLoader'
 import { useAuth } from '../context/AuthContext'
+import PatientProfileModal from '../components/PatientProfileModal'
 
 const Inpatients = () => {
   const { isAdmin, isDoctor, isReceptionist } = useAuth()
@@ -16,6 +17,9 @@ const Inpatients = () => {
   const [filterStatus, setFilterStatus] = useState('All')
   const [showModal, setShowModal] = useState(false)
   const [viewingPatient, setViewingPatient] = useState(null)
+  const [showStatusPicker, setShowStatusPicker] = useState(false)
+  const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [profilePatient, setProfilePatient] = useState(null)
   const [formData, setFormData] = useState({
     patient_id: '',
     room_id: '',
@@ -101,6 +105,22 @@ const Inpatients = () => {
         console.error('Error discharging patient:', error)
         alert('Failed to discharge patient: ' + error.message)
       }
+    }
+  }
+
+  const handleUpdateStatus = async (newStatus) => {
+    if (!viewingPatient) return
+    setUpdatingStatus(true)
+    try {
+      await db.updateInpatient(viewingPatient.id, { status: newStatus })
+      await loadData()
+      setViewingPatient(prev => ({ ...prev, status: newStatus }))
+      setShowStatusPicker(false)
+    } catch (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update status: ' + error.message)
+    } finally {
+      setUpdatingStatus(false)
     }
   }
 
@@ -258,7 +278,15 @@ const Inpatients = () => {
                   <User size={24} className="text-teal-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">{patient.patient_name}</h3>
+                  <button
+                    onClick={() => {
+                      const fullPatient = patients.find(p => p.id === patient.patient_id)
+                      if (fullPatient) setProfilePatient(fullPatient)
+                    }}
+                    className="font-bold text-slate-900 hover:text-teal-600 hover:underline text-left transition-colors"
+                  >
+                    {patient.patient_name}
+                  </button>
                   <p className="text-xs text-slate-500 font-mono">{patient.patient_number}</p>
                 </div>
               </div>
@@ -475,7 +503,7 @@ const Inpatients = () => {
           <div className="bg-white rounded-2xl max-w-2xl w-full">
             <div className="p-6 border-b border-slate-200 flex items-center justify-between">
               <h2 className="text-2xl font-bold text-slate-900">Patient Details</h2>
-              <button onClick={() => setViewingPatient(null)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+              <button onClick={() => { setViewingPatient(null); setShowStatusPicker(false) }} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                 <X size={24} />
               </button>
             </div>
@@ -528,9 +556,42 @@ const Inpatients = () => {
               )}
 
               <div className="pt-4 border-t border-slate-200 flex gap-3">
-                <button className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors">
-                  Update Status
-                </button>
+                <div className="flex-1 flex flex-col gap-2">
+                  {showStatusPicker ? (
+                    <div className="flex flex-wrap gap-2">
+                      {['Critical', 'Stable', 'Improving', 'Observation'].map(s => (
+                        <button
+                          key={s}
+                          onClick={() => handleUpdateStatus(s)}
+                          disabled={updatingStatus || s === viewingPatient.status}
+                          className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40 ${
+                            s === viewingPatient.status
+                              ? 'bg-slate-100 text-slate-400 cursor-default'
+                              : s === 'Critical' ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                              : s === 'Stable' ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : s === 'Improving' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                              : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                          }`}
+                        >
+                          {s === viewingPatient.status ? `✓ ${s}` : s}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => setShowStatusPicker(false)}
+                        className="w-full py-1 text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowStatusPicker(true)}
+                      className="w-full py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+                    >
+                      Update Status
+                    </button>
+                  )}
+                </div>
                 {canDischarge && (
                   <button 
                     onClick={() => {
@@ -546,6 +607,13 @@ const Inpatients = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {profilePatient && (
+        <PatientProfileModal
+          patient={profilePatient}
+          onClose={() => setProfilePatient(null)}
+        />
       )}
     </div>
   )

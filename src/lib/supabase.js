@@ -2154,5 +2154,80 @@ export const db = {
       .subscribe()
 
     return subscription
-  }
+  },
+
+  // ==================== VITAL SIGNS ====================
+
+  async getVitalsByPatient(patientId) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .eq('patient_id', patientId)
+      .order('recorded_at', { ascending: false })
+    if (error) throw error
+    return data || []
+  },
+
+  async getVitalsByAppointment(appointmentId) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .eq('appointment_id', appointmentId)
+      .maybeSingle()
+    if (error) throw error
+    return data || null
+  },
+
+  async getVitalsByAppointmentIds(ids) {
+    if (!ids || ids.length === 0) return new Map()
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .select('*')
+      .in('appointment_id', ids)
+    if (error) throw error
+    const map = new Map()
+    ;(data || []).forEach(v => map.set(v.appointment_id, v))
+    return map
+  },
+
+  async upsertVitals(record) {
+    // If appointment_id is present, upsert (update existing for that appointment)
+    // If no appointment_id (patient-tab entry), plain insert
+    if (record.appointment_id) {
+      const { data, error } = await supabase
+        .from('vital_signs')
+        .upsert(record, { onConflict: 'appointment_id' })
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    } else {
+      const { data, error } = await supabase
+        .from('vital_signs')
+        .insert(record)
+        .select()
+        .single()
+      if (error) throw error
+      return data
+    }
+  },
+
+  async updateVitals(id, updates) {
+    const { data, error } = await supabase
+      .from('vital_signs')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw error
+    return data
+  },
+
+  async deleteVitals(id) {
+    const { error } = await supabase
+      .from('vital_signs')
+      .delete()
+      .eq('id', id)
+    if (error) throw error
+  },
 }
