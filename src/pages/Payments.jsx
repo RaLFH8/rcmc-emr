@@ -225,12 +225,17 @@ const Payments = () => {
   // ── Data loading ──────────────────────────────────────────────────────────
   const loadStats = useCallback(async () => {
     try {
-      // Query full DB totals (not just the loaded page)
       const { supabase } = await import('../lib/supabase')
+      // Stats always show TODAY only (daily sales)
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
       let q = supabase.from('billing').select('amount_paid, total_amount, remaining_balance, payment_status', { count: 'exact' })
+        .gte('created_at', todayStart.toISOString())
+        .lte('created_at', todayEnd.toISOString())
       if (filterStatus !== 'All') q = q.eq('payment_status', filterStatus)
-      if (dateFrom) q = q.gte('created_at', dateFrom)
-      if (dateTo) q = q.lte('created_at', dateTo + 'T23:59:59')
       const { data, count } = await q
       if (data) {
         const total = data.reduce((s, r) => s + (parseFloat(r.amount_paid) || 0), 0)
@@ -242,7 +247,7 @@ const Payments = () => {
     } catch (err) {
       console.error('Stats error:', err)
     }
-  }, [filterStatus, dateFrom, dateTo])
+  }, [filterStatus])
 
   const loadData = useCallback(async () => {
     try {
@@ -659,7 +664,7 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
             <DollarSign size={20} className="text-slate-400" />
           </div>
           <p className="text-3xl font-bold text-slate-900">₱{dbStats.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-          <p className="text-xs text-slate-400 mt-1">All time (filtered)</p>
+          <p className="text-xs text-slate-400 mt-1">Today only</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm p-6">
           <div className="flex items-center justify-between mb-2">
