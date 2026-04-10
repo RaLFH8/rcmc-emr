@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit2, Trash2, X, Printer, Download, Mail, Phone } from 'lucide-react'
+import { Plus, Search, Edit2, Trash2, X, Printer, Download, Mail, Phone, Eye } from 'lucide-react'
 import { db } from '../lib/supabase'
 import jsPDF from 'jspdf'
 import SkeletonLoader from '../components/SkeletonLoader'
@@ -157,6 +157,7 @@ const Prescriptions = () => {
   const [showModal, setShowModal] = useState(false)
   const [editingPrescription, setEditingPrescription] = useState(null)
   const [viewingPrescription, setViewingPrescription] = useState(null)
+  const [viewingPrescriptionDetails, setViewingPrescriptionDetails] = useState(null)
   const [formData, setFormData] = useState({
     patient_id: '',
     doctor_id: '',
@@ -185,11 +186,14 @@ const Prescriptions = () => {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [prescriptionsData, patientsData, doctorsData] = await Promise.all([
+      const [prescriptionsData, patientsResult, doctorsData] = await Promise.all([
         db.getPrescriptions(),
         db.getPatients(1000),
         db.getDoctors()
       ])
+
+      // getPatients returns { data: [...], count: N } — unwrap here
+      const patientsData = patientsResult.data || []
       
       // Transform database format to component format
       const transformedData = prescriptionsData.map(p => {
@@ -224,7 +228,7 @@ const Prescriptions = () => {
       })
       
       setPrescriptions(transformedData)
-      setPatients(patientsData.data || [])
+      setPatients(patientsData)
       setDoctors(doctorsData)
     } catch (error) {
       console.error('Error loading data:', error)
@@ -922,6 +926,13 @@ const Prescriptions = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <button
+                    onClick={() => setViewingPrescriptionDetails(prescription)}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="View Details"
+                  >
+                    <Eye size={18} />
+                  </button>
+                  <button
                     onClick={() => handlePrint(prescription)}
                     className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                     title="Print Prescription"
@@ -1261,6 +1272,145 @@ const Prescriptions = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Prescription Details Modal */}
+      {viewingPrescriptionDetails && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+              <h2 className="text-2xl font-bold text-slate-900">Prescription Details</h2>
+              <button
+                onClick={() => setViewingPrescriptionDetails(null)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto space-y-5">
+              {/* Patient & Date info */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Patient Name</p>
+                  <p className="font-semibold text-slate-900">{viewingPrescriptionDetails.patientName}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Date</p>
+                  <p className="font-semibold text-slate-900">
+                    {new Date(viewingPrescriptionDetails.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Age</p>
+                  <p className="font-semibold text-slate-900">{viewingPrescriptionDetails.age || calculateAge(viewingPrescriptionDetails.dateOfBirth) || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Sex</p>
+                  <p className="font-semibold text-slate-900">{viewingPrescriptionDetails.sex || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Date of Birth</p>
+                  <p className="font-semibold text-slate-900">{viewingPrescriptionDetails.dateOfBirth || 'N/A'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500 mb-1">Prescribing Doctor</p>
+                  <p className="font-semibold text-slate-900">{viewingPrescriptionDetails.doctorName || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Doctor credentials */}
+              {(viewingPrescriptionDetails.licenseNo || viewingPrescriptionDetails.ptrNo || viewingPrescriptionDetails.s2No) && (
+                <div className="bg-slate-50 rounded-xl p-4 grid grid-cols-3 gap-3 text-sm">
+                  {viewingPrescriptionDetails.licenseNo && (
+                    <div>
+                      <p className="text-slate-500">License No.</p>
+                      <p className="font-mono font-semibold text-slate-800">{viewingPrescriptionDetails.licenseNo}</p>
+                    </div>
+                  )}
+                  {viewingPrescriptionDetails.ptrNo && (
+                    <div>
+                      <p className="text-slate-500">PTR No.</p>
+                      <p className="font-mono font-semibold text-slate-800">{viewingPrescriptionDetails.ptrNo}</p>
+                    </div>
+                  )}
+                  {viewingPrescriptionDetails.s2No && (
+                    <div>
+                      <p className="text-slate-500">S2 No.</p>
+                      <p className="font-mono font-semibold text-slate-800">{viewingPrescriptionDetails.s2No}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Medications */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+                  <p className="text-sm font-semibold text-slate-700">
+                    Medications ({viewingPrescriptionDetails.medications.length})
+                  </p>
+                </div>
+                {viewingPrescriptionDetails.medications.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {viewingPrescriptionDetails.medications.map((med, index) => {
+                      const parts = med.split('|').map(p => p.trim())
+                      const medName = parts[0] || med
+                      const sig = parts[1]?.replace('Sig:', '').trim() || ''
+                      const dispense = parts[2]?.replace('Dispense:', '').trim() || ''
+                      return (
+                        <div key={index} className="px-4 py-3">
+                          <p className="font-semibold text-slate-900">{index + 1}. {medName}</p>
+                          {sig && <p className="text-sm text-slate-600 ml-4">Sig: {sig}</p>}
+                          {dispense && <p className="text-sm text-slate-600 ml-4">Dispense: {dispense}</p>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="px-4 py-3 text-sm text-slate-400 italic">No medications listed</p>
+                )}
+              </div>
+
+              {/* Follow-up */}
+              {viewingPrescriptionDetails.followUp && (
+                <div className="border border-slate-200 rounded-xl p-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-1">Follow-up Instructions</p>
+                  <p className="text-sm text-slate-900 whitespace-pre-line">{viewingPrescriptionDetails.followUp}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer actions */}
+            <div className="p-6 border-t border-slate-200 flex gap-3 flex-shrink-0">
+              <button
+                onClick={() => setViewingPrescriptionDetails(null)}
+                className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2"
+              >
+                <X size={18} /> Close
+              </button>
+              <button
+                onClick={() => { setViewingPrescriptionDetails(null); handleEdit(viewingPrescriptionDetails) }}
+                className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-semibold hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Edit2 size={18} /> Edit
+              </button>
+              <button
+                onClick={() => handlePrint(viewingPrescriptionDetails)}
+                className="flex-1 py-3 bg-slate-600 text-white rounded-xl font-semibold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Printer size={18} /> Print
+              </button>
+              <button
+                onClick={() => handleSavePDF(viewingPrescriptionDetails)}
+                className="flex-1 py-3 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Download size={18} /> PDF
+              </button>
+            </div>
           </div>
         </div>
       )}
