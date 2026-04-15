@@ -1023,6 +1023,41 @@ export const db = {
     return data
   },
 
+  /**
+   * FIFO deduction: given an item name, deducts `totalQty` starting from the
+   * batch with the earliest expiration_date (nulls last = no expiry = deduct last).
+   * Spills over to the next batch when a batch runs out.
+   */
+  async deductStockFIFO(itemName, totalQty) {
+    // Fetch all batches for this item name, ordered by expiry ASC (nulls last)
+    const { data: batches, error } = await supabase
+      .from('inventory')
+      .select('id, name, stock, reorder_level, expiration_date')
+      .eq('name', itemName)
+      .gt('stock', 0)
+      .order('expiration_date', { ascending: true, nullsFirst: false })
+
+    if (error) throw error
+    if (!batches || batches.length === 0) return
+
+    let remaining = totalQty
+
+    for (const batch of batches) {
+      if (remaining <= 0) break
+
+      const deduct = Math.min(remaining, batch.stock)
+      const newStock = batch.stock - deduct
+      const newStatus = computeStatus(newStock, batch.reorder_level, batch.expiration_date)
+
+      await supabase
+        .from('inventory')
+        .update({ stock: newStock, status: newStatus })
+        .eq('id', batch.id)
+
+      remaining -= deduct
+    }
+  },
+
   async addStock(id, quantity) {
     // Get current stock
     const { data: item, error: fetchError } = await supabase
@@ -1148,10 +1183,56 @@ export const db = {
       .single()
     
     if (error) throw error
+
+    // ── Auto-deduct inventory stock for medicine/inventory items (FIFO) ──────
+    const inventoryItems = (billing.items || []).filter(
+      item => item.type === 'inventory' || item.type === 'medicine' || item.type === 'medication'
+    )
+    for (const item of inventoryItems) {
+      if (item.name && item.quantity) {
+        try {
+          // FIFO: deduct from oldest expiry batch first
+          await this.deductStockFIFO(item.name, parseInt(item.quantity) || 1)
+        } catch (deductErr) {
+          // Log but don't fail the billing — stock deduction is best-effort
+          console.error(`Failed to deduct stock for item ${item.name}:`, deductErr)
+        }
+      }
+    }
+
     return data
   },
 
   async updateBilling(id, updates) {
+    // If marking as Paid and stock hasn't been deducted yet, deduct now
+    if (updates.payment_status === 'Paid') {
+      try {
+        const { data: existing } = await supabase
+          .from('billing')
+          .select('payment_status, items, stock_deducted')
+          .eq('id', id)
+          .single()
+
+        // Only deduct if not already paid and not already deducted
+        if (existing && existing.payment_status !== 'Paid' && !existing.stock_deducted) {
+          const inventoryItems = (existing.items || []).filter(
+            item => item.type === 'inventory' || item.type === 'medicine' || item.type === 'medication'
+          )
+          for (const item of inventoryItems) {
+            if (item.name && item.quantity) {
+              try {
+                await this.deductStockFIFO(item.name, parseInt(item.quantity) || 1)
+              } catch (deductErr) {
+                console.error(`Failed to deduct stock for item ${item.name}:`, deductErr)
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Stock deduction check failed:', err)
+      }
+    }
+
     const { data, error } = await supabase
       .from('billing')
       .update(updates)
