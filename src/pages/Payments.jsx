@@ -481,23 +481,23 @@ const Payments = () => {
 
   const buildReceiptData = (payment) => {
     const totalAmount = parseFloat(payment.total_amount || payment.amount || 0)
+    const discountAmount = parseFloat(payment.discount_amount || 0)
     const amountPaid = parseFloat(payment.amount_paid ?? totalAmount)
     const remainingBalance = parseFloat(payment.remaining_balance || 0)
     const change = amountPaid > totalAmount ? amountPaid - totalAmount : 0
     const dateStr = new Date(payment.date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-    // Fix: use item.total (price × qty) for line items
     const items = (payment.items || []).map(item => ({
       name: item.name || item.description || 'Item',
       qty: item.quantity || 1,
       price: parseFloat(item.price || 0),
       total: parseFloat(item.total ?? (item.price * (item.quantity || 1)) ?? item.amount ?? 0)
     }))
-    return { totalAmount, amountPaid, remainingBalance, change, dateStr, items }
+    return { totalAmount, discountAmount, amountPaid, remainingBalance, change, dateStr, items }
   }
 
   const handleDownload = (payment) => {
     try {
-      const { totalAmount, amountPaid, remainingBalance, change, dateStr, items } = buildReceiptData(payment)
+      const { totalAmount, discountAmount, amountPaid, remainingBalance, change, dateStr, items } = buildReceiptData(payment)
       const doc = new jsPDF({ unit: 'mm', format: 'a5', orientation: 'portrait' })
       const pw = doc.internal.pageSize.getWidth()
       const ph = doc.internal.pageSize.getHeight()
@@ -543,7 +543,17 @@ const Payments = () => {
 
       y += 3; doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.4); doc.line(m, y, pw - m, y)
       y += 8; doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(0, 0, 0)
-      doc.text('TOTAL AMOUNT:', m, y); doc.setFontSize(12); doc.text('PHP ' + formatAmt(totalAmount), pw - m, y, { align: 'right' })
+      if (discountAmount > 0) {
+        const subtotal = totalAmount + discountAmount
+        doc.text('SUBTOTAL:', m, y); doc.setFontSize(12); doc.text('PHP ' + formatAmt(subtotal), pw - m, y, { align: 'right' })
+        y += 7; doc.setFontSize(9); doc.setTextColor(16, 185, 129)
+        const discountLabel = payment.discount_type ? `DISCOUNT (${payment.discount_type}):` : 'DISCOUNT:'
+        doc.text(discountLabel, m, y); doc.setFontSize(12); doc.text('-PHP ' + formatAmt(discountAmount), pw - m, y, { align: 'right' })
+        y += 7; doc.setFontSize(9); doc.setTextColor(0, 0, 0)
+        doc.text('TOTAL TO PAY:', m, y); doc.setFontSize(12); doc.text('PHP ' + formatAmt(totalAmount), pw - m, y, { align: 'right' })
+      } else {
+        doc.text('TOTAL AMOUNT:', m, y); doc.setFontSize(12); doc.text('PHP ' + formatAmt(totalAmount), pw - m, y, { align: 'right' })
+      }
       y += 7; doc.setFontSize(9); doc.setTextColor(34, 197, 94)
       doc.text('AMOUNT PAID:', m, y); doc.setFontSize(12); doc.text('PHP ' + formatAmt(amountPaid), pw - m, y, { align: 'right' })
       if (change > 0) {
@@ -1280,14 +1290,25 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
                   <p className="text-sm font-semibold text-slate-700">Payment Summary</p>
                 </div>
                 <div className="bg-white p-4 space-y-3">
-                  <div className="flex justify-between items-center">
-                    <p className="text-sm text-slate-600">Total Amount</p>
-                    <p className="text-lg font-bold text-slate-900">₱{viewingPayment.total_amount.toLocaleString()}</p>
-                  </div>
-                  {viewingPayment.discount_amount > 0 && (
+                  {viewingPayment.discount_amount > 0 ? (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-slate-600">Subtotal</p>
+                        <p className="text-lg font-bold text-slate-900">₱{(parseFloat(viewingPayment.total_amount) + parseFloat(viewingPayment.discount_amount)).toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-sm text-green-700">Discount ({viewingPayment.discount_type} — {viewingPayment.discount_percentage}%)</p>
+                        <p className="text-sm font-semibold text-green-600">-₱{parseFloat(viewingPayment.discount_amount).toLocaleString()}</p>
+                      </div>
+                      <div className="flex justify-between items-center border-t border-slate-200 pt-2">
+                        <p className="text-sm font-semibold text-slate-700">Total to Pay</p>
+                        <p className="text-lg font-bold text-slate-900">₱{parseFloat(viewingPayment.total_amount).toLocaleString()}</p>
+                      </div>
+                    </>
+                  ) : (
                     <div className="flex justify-between items-center">
-                      <p className="text-sm text-green-700">Discount ({viewingPayment.discount_type} — {viewingPayment.discount_percentage}%)</p>
-                      <p className="text-sm font-semibold text-green-600">-₱{parseFloat(viewingPayment.discount_amount).toLocaleString()}</p>
+                      <p className="text-sm text-slate-600">Total Amount</p>
+                      <p className="text-lg font-bold text-slate-900">₱{viewingPayment.total_amount.toLocaleString()}</p>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
