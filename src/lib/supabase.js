@@ -1129,7 +1129,7 @@ export const db = {
       const patientIds = (matchingPatients || []).map(p => p.id)
 
       // Build OR: receipt/invoice number match OR patient ID in matched list
-      const orParts = [`receipt_number.ilike.%${searchTerm}%`, `invoice_number.ilike.%${searchTerm}%`]
+      const orParts = [`invoice_number.ilike.%${searchTerm}%`]
       if (patientIds.length > 0) {
         orParts.push(`patient_id.in.(${patientIds.join(',')})`)
       }
