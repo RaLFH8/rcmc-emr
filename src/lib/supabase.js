@@ -1120,7 +1120,20 @@ export const db = {
       .order('created_at', { ascending: false })
 
     if (searchTerm) {
-      query = query.or(`patient_name.ilike.%${searchTerm}%,receipt_number.ilike.%${searchTerm}%,invoice_number.ilike.%${searchTerm}%`)
+      // First find matching patient IDs by name or patient number
+      const { data: matchingPatients } = await supabase
+        .from('patients')
+        .select('id')
+        .or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,patient_number.ilike.%${searchTerm}%`)
+
+      const patientIds = (matchingPatients || []).map(p => p.id)
+
+      // Build OR: receipt/invoice number match OR patient ID in matched list
+      const orParts = [`receipt_number.ilike.%${searchTerm}%`, `invoice_number.ilike.%${searchTerm}%`]
+      if (patientIds.length > 0) {
+        orParts.push(`patient_id.in.(${patientIds.join(',')})`)
+      }
+      query = query.or(orParts.join(','))
     }
 
     if (statusFilter !== 'All') {
