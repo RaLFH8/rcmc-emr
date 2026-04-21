@@ -260,7 +260,7 @@ const Payments = () => {
         db.getInventory()
       ])
 
-      const transformedPayments = billingData.map(bill => ({
+      const transformedPayments = billingData.data.map(bill => ({
         id: bill.id,
         patient_id: bill.patient_id,
         patient_name: bill.patient ? `${bill.patient.first_name} ${bill.patient.last_name}` : 'Unknown',
@@ -281,6 +281,7 @@ const Payments = () => {
       }))
 
       setPayments(transformedPayments)
+      setTotalCount(billingData.count || 0)
       setPatients(patientsData.data || patientsData || [])
       setServices(servicesData.filter(s => s.status === 'Active'))
       setInventory(inventoryData.filter(i => i.status === 'In Stock' || i.status === 'Low Stock'))
@@ -644,7 +645,7 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(dbStats.count / PAGE_SIZE))
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -859,10 +860,10 @@ ${payment.notes ? `<div class="sl">Notes:</div><div style="font-size:11px;color:
         )}
 
         {/* Pagination */}
-        {!loading && totalPages > 1 && (
+        {!loading && totalCount > 0 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
             <p className="text-sm text-slate-600">
-              Page {currentPage} of {totalPages} ({dbStats.count} total)
+              Page {currentPage} of {totalPages} ({totalCount} total)
             </p>
             <div className="flex gap-2">
               <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}

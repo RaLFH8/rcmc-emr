@@ -1116,11 +1116,11 @@ export const db = {
       .select(`
         *,
         patient:patients(id, first_name, last_name, patient_number)
-      `)
+      `, { count: 'exact' })
       .order('created_at', { ascending: false })
 
     if (searchTerm) {
-      query = query.or(`patient_name.ilike.%${searchTerm}%,invoice_number.ilike.%${searchTerm}%`)
+      query = query.or(`patient_name.ilike.%${searchTerm}%,receipt_number.ilike.%${searchTerm}%,invoice_number.ilike.%${searchTerm}%`)
     }
 
     if (statusFilter !== 'All') {
@@ -1135,10 +1135,10 @@ export const db = {
       query = query.lte('created_at', dateTo + 'T23:59:59')
     }
 
-    const { data, error } = await query.range(offset, offset + limit - 1)
+    const { data, error, count } = await query.range(offset, offset + limit - 1)
     
     if (error) throw error
-    return data || []
+    return { data: data || [], count: count || 0 }
   },
 
   async getBillingById(id) {
