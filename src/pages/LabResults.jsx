@@ -83,8 +83,16 @@ const LabResults = () => {
   const handleFileSelect = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.type !== 'application/pdf') {
-        alert('Please select a PDF file')
+      const allowedTypes = [
+        'application/pdf',
+        'image/jpeg',
+        'image/jpg',
+        'image/png',
+        'image/webp',
+        'image/gif',
+      ]
+      if (!allowedTypes.includes(file.type)) {
+        alert('Please select a PDF or image file (PDF, JPEG, PNG, WebP, GIF)')
         return
       }
       if (file.size > 10 * 1024 * 1024) { // 10MB limit
@@ -449,11 +457,11 @@ const LabResults = () => {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  PDF File * (Max 10MB)
+                  File * (PDF or Image — Max 10MB)
                 </label>
                 <input
                   type="file"
-                  accept="application/pdf"
+                  accept="application/pdf,image/jpeg,image/jpg,image/png,image/webp,image/gif"
                   onChange={handleFileSelect}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent"
                   required

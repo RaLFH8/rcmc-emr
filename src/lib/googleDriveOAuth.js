@@ -68,8 +68,9 @@ export const uploadToGoogleDrive = async (file, metadata) => {
     const token = await getAccessToken()
     
     // Create file metadata
+    const fileExtension = file.name.split('.').pop() || 'pdf'
     const fileMetadata = {
-      name: `${metadata.testName}_${metadata.patientId}_${metadata.testDate}.pdf`,
+      name: `${metadata.testName}_${metadata.patientId}_${metadata.testDate}.${fileExtension}`,
       parents: [GOOGLE_DRIVE_FOLDER_ID],
       description: `Lab Result: ${metadata.testName} for Patient ${metadata.patientId} on ${metadata.testDate}`
     }
@@ -84,7 +85,7 @@ export const uploadToGoogleDrive = async (file, metadata) => {
     return new Promise((resolve, reject) => {
       reader.readAsArrayBuffer(file)
       reader.onload = async () => {
-        const contentType = 'application/pdf'
+        const contentType = file.type || 'application/pdf'
         const metadata_part = delimiter +
           'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
           JSON.stringify(fileMetadata) + delimiter +
