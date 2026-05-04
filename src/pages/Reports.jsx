@@ -64,7 +64,10 @@ const Reports = () => {
   }
 
   const loadFinancialReport = async () => {
-    const billingData = await db.getBilling(5000, 0, '', 'All')
+    const billingResult = await db.getBilling(5000, 0, '', 'All')
+    
+    // getBilling returns { data: [...], count: N } — unwrap the array
+    const billingData = billingResult?.data || billingResult || []
     
     // Filter by date range — compare date-only strings to avoid timezone/time issues
     const filtered = billingData.filter(bill => {
@@ -174,7 +177,10 @@ const Reports = () => {
 
   const loadPatientReport = async () => {
     try {
-      const patients = await db.getPatients(10000)
+      const result = await db.getPatients(10000)
+      
+      // getPatients returns { data: [...], count: N } — unwrap the array
+      const patients = result?.data || result || []
       
       // Get all patients for total count
       const allPatients = patients || []
@@ -267,7 +273,10 @@ const Reports = () => {
   const loadInventoryReport = async () => {
     try {
       const inventory = await db.getInventory()
-      const billingData = await db.getBilling(1000, 0, '', 'All')
+      const billingResult = await db.getBilling(1000, 0, '', 'All')
+      
+      // getBilling returns { data: [...], count: N } — unwrap the array
+      const billingData = billingResult?.data || billingResult || []
       
       // Filter billing by date range
       const filtered = (billingData || []).filter(bill => {
